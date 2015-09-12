@@ -45,6 +45,10 @@
 extern int snfc_poweroff_flag;
 #endif
 
+#ifdef CONFIG_LGE_PM_SHUTDOWN_MDM_IN_CHARGERLOGO
+#include <mach/board_lge.h>
+#endif
+
 #define MDM_PBLRDY_CNT		20
 
 static int mdm_debug_mask;
@@ -149,6 +153,13 @@ static void mdm_do_first_power_on(struct mdm_modem_drv *mdm_drv)
 	int kpd_direction_assert = 1,
 		kpd_direction_de_assert = 0;
 
+#ifdef CONFIG_LGE_PM_SHUTDOWN_MDM_IN_CHARGERLOGO
+	if(lge_get_charger_logo_state()) {
+		pr_info("Fisrt_power_on_not_wroking\n");
+		return;
+	}
+#endif
+
 	if (mdm_drv->pdata->kpd_not_inverted) {
 		kpd_direction_assert = 0;
 		kpd_direction_de_assert = 1;
@@ -177,14 +188,13 @@ static void mdm_do_first_power_on(struct mdm_modem_drv *mdm_drv)
 		/* Pull AP2MDM_KPDPWR gpio high and wait for PS_HOLD to settle,
 		 * then	pull it back low.
 		 */
-		pr_debug("%s:id %d: Pulling AP2MDM_KPDPWR gpio high\n",
-				 __func__, mdm_drv->device_id);
-		gpio_direction_output(mdm_drv->ap2mdm_kpdpwr_n_gpio,
-				kpd_direction_assert);
+		pr_debug("%s: Pulling AP2MDM_KPDPWR gpio high\n", __func__);
+		gpio_direction_output(mdm_drv->ap2mdm_kpdpwr_n_gpio, 1);
+		gpio_direction_output(mdm_drv->ap2mdm_status_gpio, 1);
 		msleep(1000);
-		gpio_direction_output(mdm_drv->ap2mdm_kpdpwr_n_gpio,
-				kpd_direction_de_assert);
-	}
+		gpio_direction_output(mdm_drv->ap2mdm_kpdpwr_n_gpio, 0);
+	} else
+		gpio_direction_output(mdm_drv->ap2mdm_status_gpio, 1);
 
 	if (!GPIO_IS_VALID(mdm_drv->mdm2ap_pblrdy))
 		goto start_mdm_peripheral;
