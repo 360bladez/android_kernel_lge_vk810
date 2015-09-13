@@ -4371,6 +4371,7 @@ static void __init apq8064_cdp_init(void)
 #endif
 }
 
+#ifndef CONFIG_MACH_APQ8064_ALTEV
 MACHINE_START(APQ8064_AWIFI, "QCT APQ8064 AWIFI")
 	.map_io = apq8064_map_io,
 	.reserve = apq8064_reserve,
@@ -4382,6 +4383,7 @@ MACHINE_START(APQ8064_AWIFI, "QCT APQ8064 AWIFI")
 	.init_very_early = apq8064_early_reserve,
 	.restart = msm_restart,
 MACHINE_END
+#endif
 
 MACHINE_START(APQ8064_CDP, "QCT APQ8064 CDP")
 	.map_io = apq8064_map_io,
