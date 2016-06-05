@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -46,18 +46,19 @@
 #define MODE_CMD		41
 #define RESET_ID		2
 
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [START]
+//                                                                             
 #ifdef CONFIG_LGE_DM_DEV
 #include "lg_dm_dev_tty.h"
-#endif /*CONFIG_LGE_DM_DEV*/
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [END]
+#endif /*                 */
+//                                                                           
 #ifdef CONFIG_LGE_DM_APP
 #include "lg_dm_tty.h"
 #endif
 
 int diag_debug_buf_idx;
 unsigned char diag_debug_buf[1024];
-static unsigned int buf_tbl_size = 8; /*Number of entries in table of buffers */
+/* Number of entries in table of buffers */
+static unsigned int buf_tbl_size = 10;
 struct diag_master_table entry;
 #ifdef CONFIG_LGE_USB_DIAG_DISABLE
 #include "diag_lock.h"
@@ -80,6 +81,13 @@ uint16_t wrap_count;
 void encode_rsp_and_send(int buf_length)
 {
 	struct diag_smd_info *data = &(driver->smd_data[MODEM_DATA]);
+
+	if (buf_length > APPS_BUF_SIZE) {
+		pr_err("diag: In %s, invalid len %d, permissible len %d\n",
+					__func__, buf_length, APPS_BUF_SIZE);
+		return;
+	}
+
 	send.state = DIAG_STATE_START;
 	send.pkt = driver->apps_rsp_buf;
 	send.last = (void *)(driver->apps_rsp_buf + buf_length);
@@ -273,7 +281,7 @@ void process_lock_on_notify(struct diag_nrt_wake_lock *lock)
 	 * Do not work with ref_count here in case
 	 * of spurious interrupt
 	 */
-	if (lock->enabled)
+	if (lock->enabled && !wake_lock_active(&lock->read_lock))
 		wake_lock(&lock->read_lock);
 	spin_unlock_irqrestore(&lock->read_spinlock, read_lock_flags);
 }
@@ -366,7 +374,7 @@ void diag_smd_send_req(struct diag_smd_info *smd_info)
 {
 	void *buf = NULL, *temp_buf = NULL;
 	int total_recd = 0, r = 0, pkt_len;
-	int loop_count = 0;
+	int loop_count = 0, total_recd_partial = 0;
 	int notify = 0;
 
 	if (!smd_info) {
@@ -382,56 +390,63 @@ void diag_smd_send_req(struct diag_smd_info *smd_info)
 
 	if (smd_info->ch && buf) {
 		temp_buf = buf;
-		pkt_len = smd_cur_packet_size(smd_info->ch);
 
-		while (pkt_len && (pkt_len != total_recd)) {
-			loop_count++;
-			r = smd_read_avail(smd_info->ch);
-			pr_debug("diag: In %s, received pkt %d %d\n",
-				__func__, r, total_recd);
-			if (!r) {
-				/* Nothing to read from SMD */
-				wait_event(driver->smd_wait_q,
-					((smd_info->ch == 0) ||
-					smd_read_avail(smd_info->ch)));
-				/* If the smd channel is open */
-				if (smd_info->ch) {
-					pr_debug("diag: In %s, return from wait_event\n",
-						__func__);
-					continue;
-				} else {
-					pr_debug("diag: In %s, return from wait_event ch closed\n",
+		while ((pkt_len = smd_cur_packet_size(smd_info->ch)) != 0) {
+			total_recd_partial = 0;
+			while (pkt_len && (pkt_len != total_recd_partial)) {
+				loop_count++;
+				r = smd_read_avail(smd_info->ch);
+				pr_debug("diag: In %s, received pkt %d %d\n",
+					__func__, r, total_recd);
+				if (!r) {
+					/* Nothing to read from SMD */
+					wait_event(driver->smd_wait_q,
+						((smd_info->ch == 0) ||
+						smd_read_avail(smd_info->ch)));
+					/* If the smd channel is open */
+					if (smd_info->ch) {
+						pr_debug("diag: In %s, return from wait_event\n",
+							__func__);
+						continue;
+					} else {
+						pr_debug("diag: In %s, return from wait_event ch closed\n",
+							__func__);
+						return;
+					}
+				}
+				total_recd += r;
+				total_recd_partial += r;
+				if (total_recd > IN_BUF_SIZE) {
+					if (total_recd < MAX_IN_BUF_SIZE) {
+						pr_err("diag: In %s, SMD sending in packets up to %d bytes\n",
+							__func__, total_recd);
+						buf = krealloc(buf, total_recd,
+							GFP_KERNEL);
+					} else {
+						pr_err("diag: In %s, SMD sending in packets more than %d bytes\n",
+							__func__,
+							MAX_IN_BUF_SIZE);
+						return;
+					}
+				}
+				if (pkt_len < r) {
+					pr_err("diag: In %s, SMD sending incorrect pkt\n",
 						__func__);
 					return;
 				}
-			}
-			total_recd += r;
-			if (total_recd > IN_BUF_SIZE) {
-				if (total_recd < MAX_IN_BUF_SIZE) {
-					pr_err("diag: In %s, SMD sending in packets up to %d bytes\n",
-						__func__, total_recd);
-					buf = krealloc(buf, total_recd,
-						GFP_KERNEL);
-				} else {
-					pr_err("diag: In %s, SMD sending in packets more than %d bytes\n",
-						__func__, MAX_IN_BUF_SIZE);
-					return;
+				if (pkt_len > r) {
+					pr_debug("diag: In %s, SMD sending partial pkt %d %d %d %d %d %d\n",
+					__func__, pkt_len, r, total_recd,
+					loop_count, smd_info->peripheral,
+					smd_info->type);
 				}
-			}
-			if (pkt_len < r) {
-				pr_err("diag: In %s, SMD sending incorrect pkt\n",
-					__func__);
-				return;
-			}
-			if (pkt_len > r) {
-				pr_err("diag: In %s, SMD sending partial pkt %d %d %d %d %d %d\n",
-				__func__, pkt_len, r, total_recd, loop_count,
-				smd_info->peripheral, smd_info->type);
-			}
 
-			/* keep reading for complete packet */
-			smd_read(smd_info->ch, temp_buf, r);
-			temp_buf += r;
+				/* keep reading for complete packet */
+				smd_read(smd_info->ch, temp_buf, r);
+				temp_buf += r;
+			}
+			if (smd_info->type != SMD_CNTL_TYPE)
+				break;
 		}
 		if (!driver->real_time_mode && smd_info->type == SMD_DATA_TYPE)
 			process_lock_on_read(&smd_info->nrt_lock, pkt_len);
@@ -452,6 +467,35 @@ void diag_smd_send_req(struct diag_smd_info *smd_info)
 		(driver->logging_mode == MEMORY_DEVICE_MODE)) {
 			chk_logging_wakeup();
 	}
+#ifdef CONFIG_LGE_DM_DEV
+     else if (smd_info->ch && !buf &&
+		(driver->logging_mode == DM_DEV_MODE)) {
+//			chk_logging_wakeup();
+/*                                                                                                 */
+	  	  lge_dm_dev_tty->set_logging = 1;
+		  wake_up_interruptible(&lge_dm_dev_tty->waitq);
+/*                                                                                                 */
+	}
+#endif /*                  */
+
+#ifdef CONFIG_LGE_DM_APP
+    else if (smd_info->ch && (driver->logging_mode == DM_APP_MODE)) {
+			chk_logging_wakeup();
+/*                                                                                                 */
+/*                                                                                                                                       */
+			if( buf != NULL && smd_info->in_busy_1 == 0){
+				smd_info->in_busy_1 = 1;
+			}
+			else if(buf != NULL && smd_info->in_busy_2 == 0){
+				smd_info->in_busy_2 = 1;
+			}
+/*                                                                                                                                       */
+	  	  lge_dm_tty->set_logging = 1;
+		  wake_up_interruptible(&lge_dm_tty->waitq);
+/*                                                                                                 */
+	}
+#endif /*                 */
+
 }
 
 void diag_read_smd_work_fn(struct work_struct *work)
@@ -489,7 +533,7 @@ int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 	if (driver->logging_mode == MEMORY_DEVICE_MODE) {
 		int hsic_updated = 0;
 		if (data_type == APPS_DATA) {
-			for (i = 0; i < driver->poolsize_write_struct; i++)
+			for (i = 0; i < driver->buf_tbl_size; i++)
 				if (driver->buf_tbl[i].length == 0) {
 					driver->buf_tbl[i].buf = buf;
 					driver->buf_tbl[i].length =
@@ -655,7 +699,7 @@ int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 	}
 #endif /* DIAG OVER USB */
 
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [START]
+//                                                                             
 #ifdef CONFIG_LGE_DM_DEV
 		if (driver->logging_mode == DM_DEV_MODE) {
 			/* only diag cmd #250 for supporting testmode tool */
@@ -694,9 +738,9 @@ int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 				err = -1;
 			else
 			{
-				pr_info("diag: ENQUEUE HSIC buf ptr and length is %x , %d\n",
-					(unsigned int)buf,
-					diag_bridge[index].write_len);
+				//pr_info("diag: ENQUEUE HSIC buf ptr and length is %x , %d\n",
+				//	(unsigned int)buf,
+			//		diag_bridge[index].write_len);
 			}
 			}
 #endif /*CONFIG_DIAGFWD_BRIDGE_CODE*/
@@ -705,8 +749,8 @@ int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 		wake_up_interruptible(&lge_dm_dev_tty->waitq);
 
 	}
-#endif /*CONFIG_LGE_DM_DEV*/
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [END]
+#endif /*                 */
+//                                                                           
 
 #ifdef CONFIG_LGE_DM_APP
 	if (driver->logging_mode == DM_APP_MODE) {
@@ -750,9 +794,9 @@ int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 				err = -1;
 			else
 			{
-				pr_info("diag: ENQUEUE HSIC buf ptr and length is %x , %d\n",
-					(unsigned int)buf,
-					diag_bridge[index].write_len);
+				//pr_info("diag: ENQUEUE HSIC buf ptr and length is %x , %d\n",
+				//	(unsigned int)buf,
+			    //		diag_bridge[index].write_len);
 			}
 		}
 #endif  /*CONFIG_DIAGFWD_BRIDGE_CODE*/
@@ -761,7 +805,7 @@ int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 		wake_up_interruptible(&lge_dm_tty->waitq);
 
 	}
-#endif /*CONFIG_LGE_DM_APP */
+#endif /*                  */
     return err;
 }
 
@@ -809,30 +853,33 @@ static int diag_check_mode_reset(unsigned char *buf)
 {
 	int is_mode_reset = 0;
 
-#ifndef CONFIG_MACH_APQ8064_AWIFI
-	if (chk_apps_master() && (int)(*(char *)buf) == MODE_CMD)
-		if ((int)(*(char *)(buf+1)) == RESET_ID)
-			is_mode_reset = 1;
-#else		// [AWIFI] Without modem configuration,  2013-07-09, Kyungtaeg.kim@lge.com
-	if (chk_apps_master() && (int)(*(char *)buf) == MODE_CMD){
-
-		is_mode_reset = 1;
-	}
+#if defined(CONFIG_MACH_APQ8064_AWIFI) || defined(CONFIG_MACH_APQ8064_ALTEV)
+    if (chk_apps_master() && (int)(*(char *)buf) == MODE_CMD)
+        is_mode_reset = 1;
+#else
+    if (chk_apps_master() && (int)(*(char *)buf) == MODE_CMD)
+        if ((int)(*(char *)(buf+1)) == RESET_ID)
+            is_mode_reset = 1;
 #endif
-	return is_mode_reset;
+    return is_mode_reset;
 }
 
 void diag_send_data(struct diag_master_table entry, unsigned char *buf,
 					 int len, int type)
 {
 	driver->pkt_length = len;
-	if (entry.process_id != NON_APPS_PROC && type != MODEM_DATA) {
-		diag_update_pkt_buffer(buf);
-		diag_update_sleeping_process(entry.process_id, PKT_TYPE);
+
+	/* If the process_id corresponds to an apps process */
+	if (entry.process_id != NON_APPS_PROC) {
+		/* If the message is to be sent to the apps process */
+		if (type != MODEM_DATA) {
+			diag_update_pkt_buffer(buf);
+			diag_update_sleeping_process(entry.process_id,
+							PKT_TYPE);
+		}
 	} else {
 		if (len > 0) {
-			if ((entry.client_id >= 0) &&
-				(entry.client_id < NUM_SMD_DATA_CHANNELS)) {
+			if (entry.client_id < NUM_SMD_DATA_CHANNELS) {
 				int index = entry.client_id;
 				if (driver->smd_data[index].ch) {
 					if ((index == MODEM_DATA) &&
@@ -857,6 +904,54 @@ void diag_send_data(struct diag_master_table entry, unsigned char *buf,
 	}
 }
 
+#if defined(CONFIG_LGE_DIAG_USB_ACCESS_LOCK)
+extern int get_diag_enable(void);
+#define DIAG_ENABLE			1
+#define DIAG_DISABLE			0
+#define COMMAND_PORT_LOCK		0xA1
+#define COMMAND_WEB_DOWNLOAD		0xEF
+#define COMMAND_ASYNC_HDLC_FLAG		0x7E
+#define COMMAND_DLOAD_RESET		0x3A
+#define COMMAND_TEST_MODE		0xFA
+#define COMMAND_TEST_MODE_RESET		0x29
+#define COMMAND_VZW_AT_LOCK     0xF8
+int is_filtering_command(char *buf)
+{
+    int ret=0;
+    if(buf == NULL)
+	return -EFAULT;
+
+    switch(buf[0]) {
+	case COMMAND_PORT_LOCK :
+	    ret = 1;
+	    break;
+	case COMMAND_WEB_DOWNLOAD :
+	    ret = 1;
+	    break;
+	case COMMAND_ASYNC_HDLC_FLAG :
+	    ret = 1;
+	    break;
+	case COMMAND_DLOAD_RESET :
+	    ret = 1;
+	    break;
+	case COMMAND_TEST_MODE :
+	    ret = 1;
+	    break;
+	case COMMAND_TEST_MODE_RESET :
+	    ret = 1;
+	    break;
+	case COMMAND_VZW_AT_LOCK :
+	    ret = 1;
+	    break;
+	default:
+	    ret = 0;
+	    break;
+	}
+
+    return ret;
+}
+#endif
+
 int diag_process_apps_pkt(unsigned char *buf, int len)
 {
 	uint16_t subsys_cmd_code;
@@ -867,6 +962,13 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 	int mask_ret;
 #if defined(CONFIG_DIAG_OVER_USB)
 	unsigned char *ptr;
+#endif
+
+#if defined(CONFIG_LGE_DIAG_USB_ACCESS_LOCK)
+	/* buf[0] : 0xA1(161) is a diag command for mdm port lock */
+	if ((is_filtering_command(buf) != 1) && (get_diag_enable() == DIAG_DISABLE)) {
+	    return 0;
+        }
 #endif
 
 #ifdef CONFIG_LGE_USB_DIAG_DISABLE
@@ -888,12 +990,12 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 	temp += 2;
 	data_type = APPS_DATA;
 	/* Dont send any command other than mode reset */
-/*	2012/10/05  bk.choi@lge.com ======== For sending RESET CMD to ATD in FRST 20121005 
+/*                                                                                    
 
-	if (chk_apps_master() && cmd_code == MODE_CMD) {
-		if (subsys_id != RESET_ID)
-			data_type = MODEM_DATA;
-	}
+                                                 
+                            
+                          
+  
 */
 	pr_debug("diag: %d %d %d", cmd_code, subsys_id, subsys_cmd_code);
 	for (i = 0; i < diag_max_reg; i++) {
@@ -1032,7 +1134,9 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 		*(uint16_t *)(driver->apps_rsp_buf + 94) = MSG_SSID_21_LAST;
 		*(uint16_t *)(driver->apps_rsp_buf + 96) = MSG_SSID_22;
 		*(uint16_t *)(driver->apps_rsp_buf + 98) = MSG_SSID_22_LAST;
-		encode_rsp_and_send(99);
+		*(uint16_t *)(driver->apps_rsp_buf + 100) = MSG_SSID_23;
+		*(uint16_t *)(driver->apps_rsp_buf + 102) = MSG_SSID_23_LAST;
+		encode_rsp_and_send(103);
 		return 0;
 	}
 	/* Check for Apps Only Respond to Get Subsys Build mask */
@@ -1052,94 +1156,186 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 		/* bld time masks */
 		switch (ssid_first) {
 		case MSG_SSID_0:
+			if (ssid_range > sizeof(msg_bld_masks_0)) {
+				pr_warning("diag: truncating ssid range for ssid 0");
+				ssid_range = sizeof(msg_bld_masks_0);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_0[i/4];
 			break;
 		case MSG_SSID_1:
+			if (ssid_range > sizeof(msg_bld_masks_1)) {
+				pr_warning("diag: truncating ssid range for ssid 1");
+				ssid_range = sizeof(msg_bld_masks_1);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_1[i/4];
 			break;
 		case MSG_SSID_2:
+			if (ssid_range > sizeof(msg_bld_masks_2)) {
+				pr_warning("diag: truncating ssid range for ssid 2");
+				ssid_range = sizeof(msg_bld_masks_2);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_2[i/4];
 			break;
 		case MSG_SSID_3:
+			if (ssid_range > sizeof(msg_bld_masks_3)) {
+				pr_warning("diag: truncating ssid range for ssid 3");
+				ssid_range = sizeof(msg_bld_masks_3);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_3[i/4];
 			break;
 		case MSG_SSID_4:
+			if (ssid_range > sizeof(msg_bld_masks_4)) {
+				pr_warning("diag: truncating ssid range for ssid 4");
+				ssid_range = sizeof(msg_bld_masks_4);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_4[i/4];
 			break;
 		case MSG_SSID_5:
+			if (ssid_range > sizeof(msg_bld_masks_5)) {
+				pr_warning("diag: truncating ssid range for ssid 5");
+				ssid_range = sizeof(msg_bld_masks_5);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_5[i/4];
 			break;
 		case MSG_SSID_6:
+			if (ssid_range > sizeof(msg_bld_masks_6)) {
+				pr_warning("diag: truncating ssid range for ssid 6");
+				ssid_range = sizeof(msg_bld_masks_6);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_6[i/4];
 			break;
 		case MSG_SSID_7:
+			if (ssid_range > sizeof(msg_bld_masks_7)) {
+				pr_warning("diag: truncating ssid range for ssid 7");
+				ssid_range = sizeof(msg_bld_masks_7);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_7[i/4];
 			break;
 		case MSG_SSID_8:
+			if (ssid_range > sizeof(msg_bld_masks_8)) {
+				pr_warning("diag: truncating ssid range for ssid 8");
+				ssid_range = sizeof(msg_bld_masks_8);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_8[i/4];
 			break;
 		case MSG_SSID_9:
+			if (ssid_range > sizeof(msg_bld_masks_9)) {
+				pr_warning("diag: truncating ssid range for ssid 9");
+				ssid_range = sizeof(msg_bld_masks_9);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_9[i/4];
 			break;
 		case MSG_SSID_10:
+			if (ssid_range > sizeof(msg_bld_masks_10)) {
+				pr_warning("diag: truncating ssid range for ssid 10");
+				ssid_range = sizeof(msg_bld_masks_10);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_10[i/4];
 			break;
 		case MSG_SSID_11:
+			if (ssid_range > sizeof(msg_bld_masks_11)) {
+				pr_warning("diag: truncating ssid range for ssid 11");
+				ssid_range = sizeof(msg_bld_masks_11);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_11[i/4];
 			break;
 		case MSG_SSID_12:
+			if (ssid_range > sizeof(msg_bld_masks_12)) {
+				pr_warning("diag: truncating ssid range for ssid 12");
+				ssid_range = sizeof(msg_bld_masks_12);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_12[i/4];
 			break;
 		case MSG_SSID_13:
+			if (ssid_range > sizeof(msg_bld_masks_13)) {
+				pr_warning("diag: truncating ssid range for ssid 13");
+				ssid_range = sizeof(msg_bld_masks_13);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_13[i/4];
 			break;
 		case MSG_SSID_14:
+			if (ssid_range > sizeof(msg_bld_masks_14)) {
+				pr_warning("diag: truncating ssid range for ssid 14");
+				ssid_range = sizeof(msg_bld_masks_14);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_14[i/4];
 			break;
 		case MSG_SSID_15:
+			if (ssid_range > sizeof(msg_bld_masks_15)) {
+				pr_warning("diag: truncating ssid range for ssid 15");
+				ssid_range = sizeof(msg_bld_masks_15);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_15[i/4];
 			break;
 		case MSG_SSID_16:
+			if (ssid_range > sizeof(msg_bld_masks_16)) {
+				pr_warning("diag: truncating ssid range for ssid 16");
+				ssid_range = sizeof(msg_bld_masks_16);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_16[i/4];
 			break;
 		case MSG_SSID_17:
+			if (ssid_range > sizeof(msg_bld_masks_17)) {
+				pr_warning("diag: truncating ssid range for ssid 17");
+				ssid_range = sizeof(msg_bld_masks_17);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_17[i/4];
 			break;
 		case MSG_SSID_18:
+			if (ssid_range > sizeof(msg_bld_masks_18)) {
+				pr_warning("diag: truncating ssid range for ssid 18");
+				ssid_range = sizeof(msg_bld_masks_18);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_18[i/4];
 			break;
 		case MSG_SSID_19:
+			if (ssid_range > sizeof(msg_bld_masks_19)) {
+				pr_warning("diag: truncating ssid range for ssid 19");
+				ssid_range = sizeof(msg_bld_masks_19);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_19[i/4];
 			break;
 		case MSG_SSID_20:
+			if (ssid_range > sizeof(msg_bld_masks_20)) {
+				pr_warning("diag: truncating ssid range for ssid 20");
+				ssid_range = sizeof(msg_bld_masks_20);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_20[i/4];
 			break;
 		case MSG_SSID_21:
+			if (ssid_range > sizeof(msg_bld_masks_21)) {
+				pr_warning("diag: truncating ssid range for ssid 21");
+				ssid_range = sizeof(msg_bld_masks_21);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_21[i/4];
 			break;
 		case MSG_SSID_22:
+			if (ssid_range > sizeof(msg_bld_masks_22)) {
+				pr_warning("diag: truncating ssid range for ssid 22");
+				ssid_range = sizeof(msg_bld_masks_22);
+			}
 			for (i = 0; i < ssid_range; i += 4)
 				*(int *)(ptr + i) = msg_bld_masks_22[i/4];
 			break;
@@ -1195,7 +1391,7 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 	 /* Check for ID for NO MODEM present */
 	else if (chk_polling_response()) {
 		/* respond to 0x0 command */
-		//LGE_CHANGE_S, dong.kim@lge.com 20120414 VERNO cmd redefine
+		//                                                          
 		#if 0
 		if (*buf == 0x00) {
 			for (i = 0; i < 55; i++)
@@ -1209,7 +1405,7 @@ int diag_process_apps_pkt(unsigned char *buf, int len)
 		#endif
 		/* respond to 0x7c command */
 		if (*buf == 0x7c) {
-		//LGE_CHANGE_E
+		//            
 			driver->apps_rsp_buf[0] = 0x7c;
 			for (i = 1; i < 8; i++)
 				driver->apps_rsp_buf[i] = 0;
@@ -1231,10 +1427,12 @@ void diag_send_error_rsp(int index)
 {
 	int i;
 
-	if (index > 490) {
-		pr_err("diag: error response too huge, aborting\n");
+	/* -1 to accomodate the first byte 0x13 */
+	if (index > APPS_BUF_SIZE-1) {
+		pr_err("diag: cannot send err rsp, huge length: %d\n", index);
 		return;
 	}
+
 	driver->apps_rsp_buf[0] = 0x13; /* error code 13 */
 	for (i = 0; i < index; i++)
 		driver->apps_rsp_buf[i+1] = *(driver->hdlc_buf+i);
@@ -1321,7 +1519,7 @@ void diag_process_hdlc(void *data, unsigned len)
 	for (i = 0; i < hdlc.dest_idx; i++)
 		printk(KERN_DEBUG "\t%x", *(((unsigned char *)
 							driver->hdlc_buf)+i));
-#endif /* CONFIG_USB_G_LGE_ANDROID */
+#endif /*                          */
 #endif /* DIAG DEBUG */
 	/* ignore 2 bytes for CRC, one for 7E and send */
 	if ((driver->smd_data[MODEM_DATA].ch) && (ret) && (type) &&
@@ -1346,11 +1544,55 @@ void diag_process_hdlc(void *data, unsigned len)
 #define N_LEGACY_WRITE	(driver->poolsize + 6)
 #define N_LEGACY_READ	1
 
+static void diag_usb_connect_work_fn(struct work_struct *w)
+{
+	diagfwd_connect();
+}
+
+static void diag_usb_disconnect_work_fn(struct work_struct *w)
+{
+	diagfwd_disconnect();
+}
+
 int diagfwd_connect(void)
 {
 	int err;
 	int i;
 
+//                                                                             
+#ifdef CONFIG_LGE_DM_DEV
+	if (driver->logging_mode == DM_DEV_MODE) {
+		driver->usb_connected = 1;
+
+		err = usb_diag_alloc_req(driver->legacy_ch, N_LEGACY_WRITE,
+				N_LEGACY_READ);
+		if (err)
+			printk(KERN_ERR "diag: unable to alloc USB req on legacy ch");
+
+		/* Poll USB channel to check for data*/
+		queue_work(driver->diag_wq, &(driver->diag_read_work));
+
+		return 0;
+	}
+#endif /*                 */
+//                                                                           
+
+#ifdef CONFIG_LGE_DM_APP
+	if (driver->logging_mode == DM_APP_MODE) {
+		printk(KERN_DEBUG "diag: USB connected in DM_APP_MODE\n");
+		driver->usb_connected = 1;
+
+		err = usb_diag_alloc_req(driver->legacy_ch, N_LEGACY_WRITE,
+				N_LEGACY_READ);
+		if (err)
+			printk(KERN_ERR "diag: unable to alloc USB req on legacy ch");
+
+		/* Poll USB channel to check for data*/
+		queue_work(driver->diag_wq, &(driver->diag_read_work));
+
+		return 0;
+	}
+#endif
 	printk(KERN_DEBUG "diag: USB connected\n");
 	err = usb_diag_alloc_req(driver->legacy_ch, N_LEGACY_WRITE,
 			N_LEGACY_READ);
@@ -1385,6 +1627,28 @@ int diagfwd_disconnect(void)
 {
 	int i;
 
+//                                                                             
+#ifdef CONFIG_LGE_DM_DEV
+	if (driver->logging_mode == DM_DEV_MODE) {
+		driver->usb_connected = 0;
+
+		usb_diag_free_req(driver->legacy_ch);
+
+		return 0;
+	}
+#endif /*                 */
+//                                                                           
+
+#ifdef CONFIG_LGE_DM_APP
+	if (driver->logging_mode == DM_APP_MODE) {
+		printk(KERN_DEBUG "diag: USB disconnected in DM_APP_MODE\n");
+		driver->usb_connected = 0;
+
+		usb_diag_free_req(driver->legacy_ch);
+
+		return 0;
+	}
+#endif
 	printk(KERN_DEBUG "diag: USB disconnected\n");
 	driver->usb_connected = 0;
 	driver->debug_flag = 1;
@@ -1473,6 +1737,29 @@ int diagfwd_read_complete(struct diag_request *diag_read_ptr)
 				queue_work(driver->diag_wq,
 						 &(driver->diag_read_work));
 		}
+//                                                                             
+#ifdef CONFIG_LGE_DM_DEV
+		if (driver->logging_mode == DM_DEV_MODE) {
+			if (status != -ECONNRESET && status != -ESHUTDOWN)
+				queue_work(driver->diag_wq,
+					&(driver->diag_proc_hdlc_work));
+			else
+				queue_work(driver->diag_wq,
+						 &(driver->diag_read_work));
+		}
+#endif /*                 */
+//                                                                           
+
+#ifdef CONFIG_LGE_DM_APP
+		if (driver->logging_mode == DM_APP_MODE) {
+			if (status != -ECONNRESET && status != -ESHUTDOWN)
+				queue_work(driver->diag_wq,
+					&(driver->diag_proc_hdlc_work));
+			else
+				queue_work(driver->diag_wq,
+						 &(driver->diag_read_work));
+		}
+#endif
 	}
 #ifdef CONFIG_DIAG_SDIO_PIPE
 	else if (buf == (void *)driver->usb_buf_mdm_out) {
@@ -1512,10 +1799,12 @@ void diag_usb_legacy_notifier(void *priv, unsigned event,
 {
 	switch (event) {
 	case USB_DIAG_CONNECT:
-		diagfwd_connect();
+		queue_work(driver->diag_wq,
+			 &driver->diag_usb_connect_work);
 		break;
 	case USB_DIAG_DISCONNECT:
-		diagfwd_disconnect();
+		queue_work(driver->diag_wq,
+			 &driver->diag_usb_disconnect_work);
 		break;
 	case USB_DIAG_READ_DONE:
 		diagfwd_read_complete(d_req);
@@ -1820,6 +2109,12 @@ void diagfwd_init(void)
 	driver->read_len_legacy = 0;
 	driver->use_device_tree = has_device_tree();
 	driver->real_time_mode = 1;
+	/*
+	 * The number of entries in table of buffers
+	 * should not be any smaller than hdlc poolsize.
+	 */
+	driver->buf_tbl_size = (buf_tbl_size < driver->poolsize_hdlc) ?
+				driver->poolsize_hdlc : buf_tbl_size;
 	mutex_init(&driver->diag_hdlc_mutex);
 	mutex_init(&driver->diag_cntl_mutex);
 
@@ -1847,11 +2142,6 @@ void diagfwd_init(void)
 	    && (driver->hdlc_buf = kzalloc(HDLC_MAX, GFP_KERNEL)) == NULL)
 		goto err;
 	kmemleak_not_leak(driver->hdlc_buf);
-	if (driver->user_space_data == NULL)
-		driver->user_space_data = kzalloc(USER_SPACE_DATA, GFP_KERNEL);
-		if (driver->user_space_data == NULL)
-			goto err;
-	kmemleak_not_leak(driver->user_space_data);
 	if (driver->client_map == NULL &&
 	    (driver->client_map = kzalloc
 	     ((driver->num_clients) * sizeof(struct diag_client_map),
@@ -1859,7 +2149,7 @@ void diagfwd_init(void)
 		goto err;
 	kmemleak_not_leak(driver->client_map);
 	if (driver->buf_tbl == NULL)
-			driver->buf_tbl = kzalloc(buf_tbl_size *
+			driver->buf_tbl = kzalloc(driver->buf_tbl_size *
 			  sizeof(struct diag_write_device), GFP_KERNEL);
 	if (driver->buf_tbl == NULL)
 		goto err;
@@ -1896,6 +2186,10 @@ void diagfwd_init(void)
 	}
 	driver->diag_wq = create_singlethread_workqueue("diag_wq");
 #ifdef CONFIG_DIAG_OVER_USB
+	INIT_WORK(&(driver->diag_usb_connect_work),
+						 diag_usb_connect_work_fn);
+	INIT_WORK(&(driver->diag_usb_disconnect_work),
+						 diag_usb_disconnect_work_fn);
 	INIT_WORK(&(driver->diag_proc_hdlc_work), diag_process_hdlc_fn);
 	INIT_WORK(&(driver->diag_read_work), diag_read_work_fn);
 	driver->legacy_ch = usb_diag_open(DIAG_LEGACY, driver,
@@ -1905,6 +2199,7 @@ void diagfwd_init(void)
 		goto err;
 	}
 #endif
+
 #ifdef CONFIG_USB_G_LGE_ANDROID_DIAG_OSP_SUPPORT
 	driver->diag_read_status = 1;
 	init_waitqueue_head(&driver->diag_read_wait_q);
@@ -1931,7 +2226,6 @@ err:
 	kfree(driver->pkt_buf);
 	kfree(driver->usb_read_ptr);
 	kfree(driver->apps_rsp_buf);
-	kfree(driver->user_space_data);
 	if (driver->diag_wq)
 		destroy_workqueue(driver->diag_wq);
 }
@@ -1964,6 +2258,5 @@ void diagfwd_exit(void)
 	kfree(driver->pkt_buf);
 	kfree(driver->usb_read_ptr);
 	kfree(driver->apps_rsp_buf);
-	kfree(driver->user_space_data);
 	destroy_workqueue(driver->diag_wq);
 }

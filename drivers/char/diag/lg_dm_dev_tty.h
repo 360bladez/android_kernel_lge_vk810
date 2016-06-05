@@ -11,6 +11,10 @@
 #define DM_DEV_TTY_DATA_TO_APP		_IOWR(DM_DEV_TTY_IOCTL_MAGIC, 0x04, short)
 #define DM_DEV_TTY_DATA_TO_USB		_IOWR(DM_DEV_TTY_IOCTL_MAGIC, 0x05, short)
 #define DM_DEV_TTY_ENABLE			_IOWR(DM_DEV_TTY_IOCTL_MAGIC, 0x06, short)
+#ifdef CONFIG_MACH_APQ8064_ALTEV
+#define DM_DEV_TTY_MODEM_RESET	    _IOWR(DM_DEV_TTY_IOCTL_MAGIC, 0x07, short)
+#define DM_TTY_MODEM_DEBUGGER		_IOWR(DM_DEV_TTY_IOCTL_MAGIC, 0x08, char[300])
+#endif
 
 struct dm_dev_tty {
   wait_queue_head_t   waitq;
@@ -28,6 +32,6 @@ struct dm_dev_tty {
 
 extern struct dm_dev_tty *lge_dm_dev_tty;
 
-#endif /* CONFIG_LGE_DM_DEV */
-#endif /*TTY_LGE_DM_H_ */
+#endif /*                   */
+#endif /*              */
 

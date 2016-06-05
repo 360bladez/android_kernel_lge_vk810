@@ -57,9 +57,10 @@
 #include <linux/delay.h>
 
 #include "lg_dm_dev_tty.h"
-//seongmook.yim-0225
 #include "diagfwd_bridge.h"
-//seongmook.yim-0225
+#ifdef CONFIG_MACH_APQ8064_ALTEV
+#include <mach/subsystem_restart.h>
+#endif
 
 
 #define DM_DEV_TTY_MODULE_NAME		"DM_DEV"
@@ -91,6 +92,13 @@ enum {
     DM_DEV_TTY_CLOSED = 3,
 };
 
+// kyle00.choi, 20140411, RF Device Check [START]	
+#ifdef CONFIG_MACH_APQ8064_ALTEV
+#define MAX_SSR_REASON_LEN 81U
+extern char ssr_noti[MAX_SSR_REASON_LEN];
+#endif
+// kyle00.choi, 20140411, RF Device Check [END]	
+
 void lge_dm_dev_usb_fn(struct work_struct *work)
 {
 		usb_diag_write(driver->legacy_ch, driver->write_ptr_svc);
@@ -104,15 +112,11 @@ static int lge_dm_dev_tty_modem_request(const unsigned char *buf, int count)
 	int err = 0;
 #endif /*CONFIG_DIAGFWD_BRIDGE_CODE*/
 
-//seongmook.yim-0225
 	int index = 0;
 //	unsigned int payload_size;
 //	int remote_proc = 0;
 	//int token_offset = 0;
-//seongmook.yim-0225
 
-pr_info("[mook] lge_dm_dev_tty_modem_request");
-pr_info("[mook] write mask in modem_request = %d %d %d",buf[0],buf[1],buf[2]);	
 
 	
 #ifdef CONFIG_DIAG_SDIO_PIPE
@@ -128,7 +132,6 @@ pr_info("[mook] write mask in modem_request = %d %d %d",buf[0],buf[1],buf[2]);
 #endif /*CONFIG_DIAG_SDIO_PIPE*/
 
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
-//seongmook.yim-0225
    		/* send masks to All 9k */
 		for (index = 0; index < MAX_HSIC_CH; index++) {
 //			if (diag_hsic[index].hsic_ch && (payload_size > 0) &&
@@ -164,13 +167,6 @@ pr_info("[mook] write mask in modem_request = %d %d %d",buf[0],buf[1],buf[2]);
 		}
 
 #endif /*CONFIG_DIAGFWD_BRIDGE_CODE*/
-//          else
-//          	{
-//          pr_info(DM_DEV_TTY_MODULE_NAME ": %s: lge_dm_dev_tty_write"
-//                    "error count = %d\n",
-//                    __func__, count);
-//          	}
-//seongmook.yim-0225
 
           return count;
 }
@@ -181,22 +177,14 @@ static int lge_dm_dev_tty_modem_response(struct dm_dev_tty *lge_dm_dev_tty_drv,
 {
 	int num_push = 0;
 	int total_push = 0;
-//	struct timeval time;
-//	int start_flag_length;
-//	int end_flag_length;
 	int left = 0;
 
 	if (count == 0)
 	{
-		pr_info("diag:[mook]lge_dm_dev_tty_modem_response / count = %d\n",count);
+		pr_info(DM_DEV_TTY_MODULE_NAME ": %s:"
+				"lge_dm_dev_tty_modem_response / count = %d\n",__func__,count);
 		return 0;
 	}
-//	if (lge_dm_dev_tty_drv->
-//	is_modem_open[modem_number] == FALSE)
-//	return 0;
-//	pr_info("diag:[mook]lge_dm_dev_tty_modem_response / count = %d\n",count);
-//	pr_info("diag:[mook]lge_dm_dev_tty_modem_response / tty_str->count = %d\n",lge_dm_dev_tty_drv->tty_str->count);
-
 	left = count;
 
 	do {
@@ -213,10 +201,8 @@ static int lge_dm_dev_tty_modem_response(struct dm_dev_tty *lge_dm_dev_tty_drv,
 
 static int lge_dm_dev_tty_read_thread(void *data)
 {
-	//seongmook.yim-0225
 //	int remote_token = 0;
 	int index=0;
-	//seongmook.yim-0225
 
 	int i = 0;
 	struct dm_dev_tty *lge_dm_dev_tty_drv = NULL;
@@ -226,11 +212,10 @@ static int lge_dm_dev_tty_read_thread(void *data)
 	struct diag_write_device hsic_buf_tbl[NUM_HSIC_BUF_TBL_ENTRIES];
 #endif /*CONFIG_DIAGFWD_BRIDGE_CODE*/
 	
-	pr_info("diag:[mook]lge_dm_dev_tty_read_thread / set_logging = %d / logging_mode = %d \n",lge_dm_dev_tty->set_logging,driver->logging_mode);
-
+//	pr_info(DM_DEV_TTY_MODULE_NAME ": %s:"
+//		"set_logging = %d, logging_mode = %d\n",__func__, lge_dm_dev_tty->set_logging, driver->logging_mode);
+		
 	lge_dm_dev_tty_drv = lge_dm_dev_tty;
-
-	pr_info("diag:[mook]lge_dm_dev_tty_read_thread\n");
 
 	while(1){
 
@@ -252,7 +237,6 @@ static int lge_dm_dev_tty_read_thread(void *data)
 				}
 #endif /*CONFIG_DIAG_SDIO_PIPE*/
 
-//seongmook.yim-0225
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 			spin_lock_irqsave(&diag_hsic[HSIC].hsic_spinlock,
 								spin_lock_flags);
@@ -288,7 +272,6 @@ static int lge_dm_dev_tty_read_thread(void *data)
 				}
 			}
 #endif /* CONFIG_DIAGFWD_BRIDGE_CODE */
-//seongmook.yim-0225
 			lge_dm_dev_tty->set_logging = 0;
 
 #ifdef CONFIG_DIAG_SDIO_PIPE
@@ -298,7 +281,6 @@ static int lge_dm_dev_tty_read_thread(void *data)
 						&(driver->diag_read_sdio_work));
 #endif /* CONFIG_DIAG_SDIO_PIPE */
 
-//seongmook.yim-0225
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 
 				/* Read data from the hsic */
@@ -308,7 +290,6 @@ static int lge_dm_dev_tty_read_thread(void *data)
 					     diag_read_hsic_work));
 
 #endif /*CONFIG_DIAGFWD_BRIDGE_CODE*/
-//seongmook.yim-0225
 
 }
 		mutex_unlock(&driver->diagchar_mutex);
@@ -341,13 +322,13 @@ static int lge_dm_dev_tty_write(struct tty_struct *tty, const unsigned char *buf
   lge_dm_dev_tty_drv -> tty_str = tty;
 
 
-  pr_info("[mook] write mask in tty_write = %d %d %d",buf[0],buf[1],buf[2]);	
 
   /* check the packet size  */
   if(count > DM_DEV_TTY_TX_MAX_PACKET_SIZE)
   {
-    pr_info(DM_DEV_TTY_MODULE_NAME "[mook_tty]:%s:"
-        "lge_dm_dev_tty_write error count = %d\n",__func__, count);
+        pr_info(DM_DEV_TTY_MODULE_NAME ": %s:"
+		"lge_dm_dev_tty_write error count = %d\n",
+			__func__, count);
     return -EPERM;
   }
   result = lge_dm_dev_tty_modem_request(buf,count);
@@ -359,11 +340,11 @@ static int lge_dm_dev_tty_open(struct tty_struct *tty, struct file *file)
 {
   struct dm_dev_tty *lge_dm_dev_tty_drv = NULL;
 
-  printk("[mook] tty_open!!!\n");
+  pr_info(DM_DEV_TTY_MODULE_NAME ": %s: DEV_TTY device open\n", __func__);
 
   if(!tty)
   {
-    pr_err(DM_DEV_TTY_MODULE_NAME "[mook]:%s: NULL tty", __func__);
+    pr_err(DM_DEV_TTY_MODULE_NAME ": %s: NULL tty", __func__);
     return -ENODEV;
   }
 
@@ -390,7 +371,7 @@ static int lge_dm_dev_tty_open(struct tty_struct *tty, struct file *file)
   set_bit(TTY_NO_WRITE_SPLIT, &lge_dm_dev_tty_drv->tty_str->flags);
   
   lge_dm_dev_tty_drv->tty_ts = kthread_run(lge_dm_dev_tty_read_thread, NULL,"lge_dm_dev_tty_thread");
-  pr_info("[mook]:%s: TTY device open / kthread_run \n",__func__);
+
 
   lge_dm_dev_tty_drv->tty_state = DM_DEV_TTY_OPEN;
 
@@ -404,10 +385,8 @@ static int lge_dm_dev_tty_open(struct tty_struct *tty, struct file *file)
 
 static void lge_dm_dev_tty_close(struct tty_struct *tty, struct file *file)
 {
-	//seongmook.yim-0225
 	int index=MODEM_DATA;
 	int i;
-	//seongmook.yim-0225
 	struct dm_dev_tty *lge_dm_dev_tty_drv = NULL;
 
 	lge_dm_dev_tty_drv = lge_dm_dev_tty;
@@ -417,19 +396,19 @@ static void lge_dm_dev_tty_close(struct tty_struct *tty, struct file *file)
 	clear_bit(TTY_NO_WRITE_SPLIT, &lge_dm_dev_tty_drv->tty_str->flags);
 
 	if (!tty) {
-		pr_err(DM_DEV_TTY_MODULE_NAME "[mook] : %s: NULL tty", __func__);
+		pr_err(DM_DEV_TTY_MODULE_NAME ": %s: NULL tty", __func__);
 		return;
 	}
 
 	lge_dm_dev_tty_drv = tty->driver_data;
 
 	if (!lge_dm_dev_tty_drv) {
-		pr_err(DM_DEV_TTY_MODULE_NAME "[mook] : %s: NULL sdio_tty_drv", __func__);
+		pr_err(DM_DEV_TTY_MODULE_NAME ": %s: NULL sdio_tty_drv", __func__);
 		return;
 	}
 
 	if (lge_dm_dev_tty_drv->tty_state != DM_DEV_TTY_OPEN) {
-		pr_err(DM_DEV_TTY_MODULE_NAME "[mook] : %s: DEV_TTY device was not opened\n",
+		pr_err(DM_DEV_TTY_MODULE_NAME ": %s: DEV_TTY device was not opened\n",
 			__func__);
 		return;
 	}
@@ -445,19 +424,7 @@ static void lge_dm_dev_tty_close(struct tty_struct *tty, struct file *file)
 
 	cancel_work_sync(&(lge_dm_dev_tty_drv->dm_dev_usb_work));
 	destroy_workqueue(lge_dm_dev_tty_drv->dm_dev_wq);
-//seongmook.yim-0225
-	pr_info( "[mook]DM_DEV_TTY_MODEM_CLOSE in tty_close\n");
-		lge_dm_dev_tty->set_logging = 0;
-		
-		/* change path to USB driver */
-		mutex_lock(&driver->diagchar_mutex);
-		driver->logging_mode = USB_MODE;
-		mutex_unlock(&driver->diagchar_mutex);
-		
-		if (driver->usb_connected == 0)
-			diagfwd_disconnect();
-		else
-			diagfwd_connect();
+
 
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 		diag_hsic[index].num_hsic_buf_tbl_entries = 0;
@@ -476,18 +443,13 @@ static void lge_dm_dev_tty_close(struct tty_struct *tty, struct file *file)
 		diagfwd_connect_bridge(0);
 #endif
 
-		pr_info(DM_DEV_TTY_MODULE_NAME ": %s : lge_dm_dev_tty_ioctl "
-			"DM_DEV_TTY_IOCTL_MODEM_CLOSE\n", __func__);
-//seongmook.yim-0225
 	return;
 }
 
 static int lge_dm_dev_tty_ioctl(struct tty_struct *tty, unsigned int cmd, unsigned long arg)
 {
-//seongmook.yim-0225
 //	int index=0;
 	int index=MODEM_DATA;
-//seongmook.yim-0225
 
 	int i;
 	#ifdef CONFIG_DIAGFWD_BRIDGE_CODE
@@ -505,9 +467,7 @@ static int lge_dm_dev_tty_ioctl(struct tty_struct *tty, unsigned int cmd, unsign
 	switch (cmd){
 
 	case DM_DEV_TTY_MODEM_OPEN:
-		pr_info(DM_DEV_TTY_MODULE_NAME "[mook] DM_DEV_TTY_MODEM_OPEN\n");
 
-//seongmook.yim-0225
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 		if ((diag_bridge[index].usb_connected == 1) && (diag_hsic[index].count_hsic_pool == N_MDM_WRITE)) {
 			spin_lock_irqsave(&diag_hsic[HSIC].hsic_spinlock,spin_lock_flags);
@@ -517,16 +477,13 @@ static int lge_dm_dev_tty_ioctl(struct tty_struct *tty, unsigned int cmd, unsign
 
 		diag_hsic[index].num_hsic_buf_tbl_entries = 0;
 		for (i = 0; i < diag_hsic[index].poolsize_hsic_write; i++) {
-			pr_info(DM_DEV_TTY_MODULE_NAME "[mook] lge_dm_dev_tty_ioctl -5- %d\n",diag_hsic[index].poolsize_hsic_write);
 			if (diag_hsic[index].hsic_buf_tbl[index].buf) {
-				pr_info(DM_DEV_TTY_MODULE_NAME "[mook] lge_dm_dev_tty_ioctl -6- \n");
 				/* Return the buffer to the pool */
 				diagmem_free(driver, (unsigned char *)
 					(diag_hsic[index].hsic_buf_tbl[index].buf),
 					POOL_TYPE_HSIC);
 				diag_hsic[index].hsic_buf_tbl[index].buf = 0;
 			}
-			pr_info(DM_DEV_TTY_MODULE_NAME "[mook] lge_dm_dev_tty_ioctl -7- \n");
 			diag_hsic[index].hsic_buf_tbl[index].length = 0;
 		}
 
@@ -534,7 +491,6 @@ static int lge_dm_dev_tty_ioctl(struct tty_struct *tty, unsigned int cmd, unsign
 		diagfwd_cancel_hsic(REOPEN_HSIC); // QCT 161032 migration - NEED TO CHECK
 		diagfwd_connect_bridge(0);
 		#endif /* CONFIG_DIAGFWD_BRIDGE_CODE */
-//seongmook.yim-0225
 
 		/* change path to DM DEV */
 		mutex_lock(&driver->diagchar_mutex);
@@ -548,7 +504,6 @@ static int lge_dm_dev_tty_ioctl(struct tty_struct *tty, unsigned int cmd, unsign
 			queue_work(driver->diag_sdio_wq,
 				&(driver->diag_read_sdio_work));
 #endif
-//seongmook.yim-0225
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 		/* Read data from the hsic */
 		if (diag_hsic[index].hsic_ch)
@@ -556,15 +511,12 @@ static int lge_dm_dev_tty_ioctl(struct tty_struct *tty, unsigned int cmd, unsign
 				   &(diag_hsic[index].
 					 diag_read_hsic_work));
 #endif /* CONFIG_DIAGFWD_BRIDGE_CODE */
-//seongmook.yim-0225
 
-		pr_info( ": %s : [mook] DM_DEV_TTY_IOCTL_MODEM_OPEN "
-			"logging mode = %d\n", __func__,driver->logging_mode);
 
 		break;
 		
 	case DM_DEV_TTY_MODEM_CLOSE:
-		pr_info( "[mook]DM_DEV_TTY_MODEM_CLOSE\n");
+        
 		lge_dm_dev_tty->set_logging = 0;
 		
 		/* change path to USB driver */
@@ -603,10 +555,33 @@ static int lge_dm_dev_tty_ioctl(struct tty_struct *tty, unsigned int cmd, unsign
 
 		/* change path to DM DEV */
 		mutex_lock(&driver->diagchar_mutex);
-		pr_info(DM_DEV_TTY_MODULE_NAME "[mook_tty] : %s, Logging mode Change to DM_DEV_MODE\n",__func__);
+		pr_info(DM_DEV_TTY_MODULE_NAME ": %s:, Logging mode Change to DM_DEV_MODE\n",__func__);
 		driver->logging_mode = DM_DEV_MODE;
 		mutex_unlock(&driver->diagchar_mutex);
 		break;
+
+#ifdef CONFIG_MACH_APQ8064_ALTEV
+    case DM_DEV_TTY_MODEM_RESET:
+        pr_info( "DM_TTY_MODEM_RESET\n");
+        subsys_modem_restart();
+        break;
+
+	// kyle00.choi, 20140411, RF Device Check [START]	
+	case DM_TTY_MODEM_DEBUGGER:
+	{
+		char rw_buf[300];
+		memset(rw_buf, 0, sizeof(rw_buf));
+		strcpy(rw_buf,ssr_noti);
+		if (copy_to_user((void *)arg, &rw_buf, sizeof(rw_buf)))
+		{
+			pr_info(DM_DEV_TTY_MODULE_NAME ": %s: DM_TTY_MODEM_DEBUGGER error! rw_buf = %s\n", __func__, rw_buf);
+			return -EFAULT;
+		}
+		printk("rw_buf = %s\n",rw_buf);
+		break;
+	}
+	// kyle00.choi, 20140411, RF Device Check [END]	
+#endif
 
 	default:
 		pr_info(DM_DEV_TTY_MODULE_NAME ": %s:"
@@ -631,12 +606,12 @@ static int __init lge_dm_dev_tty_init(void)
     struct device *tty_dev;
     struct dm_dev_tty *lge_dm_dev_tty_drv;
 
-    pr_info(DM_DEV_TTY_MODULE_NAME "[mook_tty] : %s\n",__func__);
+    pr_info(DM_DEV_TTY_MODULE_NAME ": %s:\n",__func__);
     
     lge_dm_dev_tty_drv = kzalloc(sizeof(struct dm_dev_tty), GFP_KERNEL);
     if(lge_dm_dev_tty_drv == NULL)
     {
-      pr_info(DM_DEV_TTY_MODULE_NAME "[mook_tty]:%s:" 
+      pr_info(DM_DEV_TTY_MODULE_NAME ": %s:" 
                                      "failed to allocate lge_dm_dev_tty", __func__);
       return 0;
     }
@@ -645,7 +620,7 @@ static int __init lge_dm_dev_tty_init(void)
     lge_dm_dev_tty_drv -> tty_drv = alloc_tty_driver(MAX_DM_DEV_TTY_DRV);
     if(!lge_dm_dev_tty->tty_drv)
     {
-      pr_info(DM_DEV_TTY_MODULE_NAME "[mook_tty] :%s - tty_drv is NULL", __func__);
+      pr_info(DM_DEV_TTY_MODULE_NAME ": %s:tty_drv is NULL", __func__);
       kfree(lge_dm_dev_tty_drv);
       return 0;
     }
@@ -670,10 +645,9 @@ static int __init lge_dm_dev_tty_init(void)
     tty_set_operations(lge_dm_dev_tty_drv->tty_drv, &lge_dm_dev_tty_ops);
     ret = tty_register_driver(lge_dm_dev_tty_drv->tty_drv);
 
-    if (ret) 
-    {
+	if (ret) {
         put_tty_driver(lge_dm_dev_tty_drv->tty_drv);
-        pr_info(DM_DEV_TTY_MODULE_NAME "[mook_tty]: %s:"
+        pr_info(DM_DEV_TTY_MODULE_NAME ": %s:"
         "tty_register_driver() ""failed\n",
          __func__);
 
@@ -686,7 +660,7 @@ static int __init lge_dm_dev_tty_init(void)
 
     if(IS_ERR(tty_dev))
     {
-       pr_info(DM_DEV_TTY_MODULE_NAME "[mook_tty]: %s:"
+       pr_info(DM_DEV_TTY_MODULE_NAME ": %s:"
        "tty_register_driver() ""failed\n",
         __func__);
        tty_unregister_driver(lge_dm_dev_tty_drv -> tty_drv);
@@ -699,7 +673,8 @@ static int __init lge_dm_dev_tty_init(void)
 
     lge_dm_dev_tty_drv -> tty_state = DM_DEV_TTY_REGISTERED;
   
-    return 0;
+	return 0;
+
 }
 
 static void __exit lge_dm_dev_tty_exit(void)
@@ -732,12 +707,11 @@ static void __exit lge_dm_dev_tty_exit(void)
       lge_dm_dev_tty_drv -> tty_drv = NULL;
     }
 
-    pr_info(DM_DEV_TTY_MODULE_NAME "[mook_tty]:%s: Freeing dm_dev_tty structure", __func__);
     kfree(lge_dm_dev_tty_drv);
 
-    return;
-}
+	return;
 
+}
 
 module_init(lge_dm_dev_tty_init);
 module_exit(lge_dm_dev_tty_exit);
@@ -745,4 +719,4 @@ module_exit(lge_dm_dev_tty_exit);
 MODULE_DESCRIPTION("LGE DM DEV TTY");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Seongmook Yim <seongmook.yim@lge.com>");
-#endif /*CONFIG_LGE_DM_DEV*/
+#endif /*                 */

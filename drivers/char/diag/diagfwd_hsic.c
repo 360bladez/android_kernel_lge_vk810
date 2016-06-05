@@ -37,6 +37,11 @@
 #define READ_HSIC_BUF_SIZE 2048
 struct diag_hsic_dev *diag_hsic;
 
+#if defined(CONFIG_LGE_DIAG_USB_ACCESS_LOCK)
+extern int get_diag_enable(void);
+#define DIAG_DISABLE 0
+#endif
+
 
 #ifdef CONFIG_LGE_USB_DIAG_DISABLE
 #include "diag_lock.h"
@@ -90,15 +95,15 @@ static void diag_read_hsic_work_fn(struct work_struct *work)
 		write_ptrs_available = diag_hsic[index].poolsize_hsic_write -
 					diag_hsic[index].count_hsic_write_pool;
 
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [START]
+//                                                                             
 #ifdef CONFIG_LGE_DM_DEV
 	if (driver->logging_mode == DM_DEV_MODE) {
 		write_ptrs_available = diag_hsic[index].poolsize_hsic_write -
 					diag_hsic[index].
 						num_hsic_buf_tbl_entries;
 		}
-#endif /*CONFIG_LGE_DM_DEV*/
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [END]
+#endif /*                 */
+//                                                                           
 
 #ifdef CONFIG_LGE_DM_APP
 	if (driver->logging_mode == DM_APP_MODE) {
@@ -191,18 +196,17 @@ static void diag_hsic_read_complete_callback(void *ctxt, char *buf,
 		return;
 	}
 
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [START]
+//                                                                             
 #ifdef CONFIG_LGE_DM_DEV
 		if ((actual_size == 0) &&
 			(driver->logging_mode == DM_DEV_MODE)) {
-			pr_info("diag:[mook]diag_hsic_read_complete_callback / logging_mode == DM_DEV_MODE\n");
 			diagmem_free(driver, buf, POOL_TYPE_HSIC);
 			queue_work(diag_bridge[index].wq,
 				 &diag_hsic[index].diag_read_hsic_work);
 			return;
 		}
-#endif /*CONFIG_LGE_DM_DEV*/
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [END]
+#endif /*                 */
+//                                                                           
 
 #ifdef CONFIG_LGE_DM_APP
 	if ((actual_size == 0) &&
@@ -268,14 +272,14 @@ static void diag_hsic_read_complete_callback(void *ctxt, char *buf,
 		queue_work(diag_bridge[index].wq,
 				 &diag_hsic[index].diag_read_hsic_work);
 	}
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [START]
+//                                                                             
 #ifdef CONFIG_LGE_DM_DEV
 	if (err && (driver->logging_mode == DM_DEV_MODE))
 		{
 			queue_work(diag_bridge[index].wq,&diag_hsic[index].diag_read_hsic_work);
 		}
-#endif /*CONFIG_LGE_DM_DEV*/
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [END]
+#endif /*                 */
+//                                                                           
 
 #ifdef CONFIG_LGE_DM_APP
 	if (err && (driver->logging_mode == DM_APP_MODE))
@@ -333,15 +337,12 @@ static int diag_hsic_suspend(void *ctxt)
 	if(mtsk_tty->run)
 		return -EBUSY;
 
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [START]
+//                                                                             
 #ifdef CONFIG_LGE_DM_DEV
 	if (driver->logging_mode == DM_DEV_MODE)
-		{
-		pr_debug("diag:[mook]diag_hsic_suspend / logging_mode == DM_DEV_MODE\n");
-			return -EBUSY;
-		}
-#endif /*CONFIG_LGE_DM_DEV*/
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [END]
+		return -EBUSY;
+#endif /*                 */
+//                                                                           
 
 #ifdef CONFIG_LGE_DM_APP
 	if (driver->logging_mode == DM_APP_MODE)
@@ -359,7 +360,7 @@ static void diag_hsic_resume(void *ctxt)
 
 	pr_debug("diag: hsic_resume\n");
 	diag_hsic[index].hsic_suspend = 0;
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [START]
+//                                                                             
 #ifdef CONFIG_LGE_DM_DEV
 	if ((diag_hsic[index].count_hsic_pool <
 		diag_hsic[index].poolsize_hsic) &&
@@ -367,8 +368,8 @@ static void diag_hsic_resume(void *ctxt)
 				(diag_bridge[index].usb_connected)))
 		queue_work(diag_bridge[index].wq,
 			 &diag_hsic[index].diag_read_hsic_work);
-#endif /*CONFIG_LGE_DM_DEV*/
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [END]
+#endif /*                 */
+//                                                                           
 
 #ifdef CONFIG_LGE_DM_APP
 	if ((diag_hsic[index].count_hsic_pool <
@@ -377,7 +378,7 @@ static void diag_hsic_resume(void *ctxt)
 				(diag_bridge[index].usb_connected)))
 		queue_work(diag_bridge[index].wq,
 			 &diag_hsic[index].diag_read_hsic_work);
-#endif /*CONFIG_LGE_DM_APP*/
+#endif /*                 */
 
 
 
@@ -507,6 +508,16 @@ void diag_usb_read_complete_hsic_fn(struct work_struct *w)
 			return;
 		}
 #endif
+#if defined(CONFIG_LGE_DIAG_USB_ACCESS_LOCK)
+	if (get_diag_enable() == DIAG_DISABLE) {
+		int index = bridge_struct->id;
+		diag_hsic[index].in_busy_hsic_read_on_device = 0;
+		if (!diag_hsic[index].in_busy_hsic_write)
+			queue_work(diag_bridge[index].wq,
+				  &diag_bridge[index].diag_read_work);
+		return;
+	}
+#endif
 
 	diagfwd_read_complete_bridge(
 			diag_bridge[bridge_struct->id].usb_read_ptr);
@@ -635,12 +646,11 @@ static int diag_hsic_probe(struct platform_device *pdev)
 			  &diag_hsic[pdev->id].diag_read_hsic_work);
 	}
 
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [START]
+//                                                                             
 #ifdef CONFIG_LGE_DM_DEV
 //		else if (driver->logging_mode == DM_DEV_MODE) {
 		else if (diag_bridge[pdev->id].usb_connected || (driver->logging_mode ==
 								   DM_DEV_MODE)) {
-		pr_debug("diag:[mook]diag_hsic_probe / logging_mode == DM_DEV_MODE\n");
 
 		if (diag_hsic[pdev->id].hsic_device_opened) {
 			/* should not happen. close it before re-opening */
@@ -673,11 +683,13 @@ static int diag_hsic_probe(struct platform_device *pdev)
 		queue_work(diag_bridge[pdev->id].wq,
 			  &diag_hsic[pdev->id].diag_read_hsic_work);
 		}
-#endif /* CONFIG_LGE_DM_DEV */
-//2012-03-06 seongmook.yim(seongmook.yim@lge.com) [P6/MDMBSP] ADD LGODL [END]
+#endif /*                   */
+//                                                                           
 
 #ifdef CONFIG_LGE_DM_APP
-	else if (driver->logging_mode == DM_APP_MODE) {
+//	else if (driver->logging_mode == DM_APP_MODE) {
+	else if (diag_bridge[pdev->id].usb_connected || (driver->logging_mode ==
+								   DM_APP_MODE)) {
 		if (diag_hsic[pdev->id].hsic_device_opened) {
 			/* should not happen. close it before re-opening */
 			pr_err("diag: HSIC channel already opened in probe\n");
@@ -709,7 +721,7 @@ static int diag_hsic_probe(struct platform_device *pdev)
 		queue_work(diag_bridge[pdev->id].wq,
 			  &diag_hsic[pdev->id].diag_read_hsic_work);
 	}
-#endif /* CONFIG_LGE_DM_APP */
+#endif /*                   */
 
 	/* The HSIC (diag_bridge) platform device driver is enabled */
 	diag_hsic[pdev->id].hsic_device_enabled = 1;
