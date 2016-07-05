@@ -25,7 +25,7 @@
 #define CSID_VERSION_V2                      0x02000011
 #define CSID_VERSION_V3                      0x30000000
 
-#define DBG_CSID 1
+#define DBG_CSID 0
 
 #define TRUE   1
 #define FALSE  0
@@ -42,12 +42,29 @@ static int msm_csid_cid_lut(
 		return -EINVAL;
 	}
 	for (i = 0; i < csid_lut_params->num_cid && i < 16; i++) {
+#if defined(CONFIG_LGE_GK_CAMERA)
 		pr_err("%s lut params num_cid = %d, cid = %d, dt = %x, df = %d\n",
 			__func__,
 			csid_lut_params->num_cid,
 			csid_lut_params->vc_cfg[i].cid,
 			csid_lut_params->vc_cfg[i].dt,
 			csid_lut_params->vc_cfg[i].decode_format);
+#else
+		if (csid_lut_params->vc_cfg[i].cid >=
+			csid_lut_params->num_cid ||
+			csid_lut_params->vc_cfg[i].cid < 0) {
+			pr_err("%s: cid outside range %d\n",
+				__func__, csid_lut_params->vc_cfg[i].cid);
+			return -EINVAL;
+		}
+
+		CDBG("%s lut params num_cid = %d, cid = %d, dt = %x, df = %d\n",
+			__func__,
+			csid_lut_params->num_cid,
+			csid_lut_params->vc_cfg[i].cid,
+			csid_lut_params->vc_cfg[i].dt,
+			csid_lut_params->vc_cfg[i].decode_format);
+#endif
 		if (csid_lut_params->vc_cfg[i].dt < 0x12 ||
 			csid_lut_params->vc_cfg[i].dt > 0x37) {
 			CDBG("%s: unsupported data type 0x%x\n",
@@ -130,7 +147,7 @@ static irqreturn_t msm_csid_irq(int irq_num, void *data)
 		return IRQ_HANDLED;
 	}
 	irq = msm_camera_io_r(csid_dev->base + CSID_IRQ_STATUS_ADDR);
-	pr_err("%s CSID%d_IRQ_STATUS_ADDR = 0x%x\n",
+	CDBG("%s CSID%d_IRQ_STATUS_ADDR = 0x%x\n",
 		 __func__, csid_dev->pdev->id, irq);
 	if (irq & (0x1 << CSID_RST_DONE_IRQ_BITSHIFT))
 			complete(&csid_dev->reset_complete);
@@ -444,6 +461,13 @@ static long msm_csid_cmd(struct csid_device *csid_dev, void *arg)
 			sizeof(struct msm_camera_csid_params))) {
 			pr_err("%s: %d failed\n", __func__, __LINE__);
 			rc = -EFAULT;
+			break;
+		}
+		if (csid_params.lut_params.num_cid < 1 ||
+			csid_params.lut_params.num_cid > 16) {
+			pr_err("%s: %d num_cid outside range\n",
+				__func__, __LINE__);
+			rc = -EINVAL;
 			break;
 		}
 		vc_cfg = kzalloc(csid_params.lut_params.num_cid *

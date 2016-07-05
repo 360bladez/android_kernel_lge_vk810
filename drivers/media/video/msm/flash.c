@@ -43,8 +43,8 @@ enum msm_cam_flash_stat{
 };
 
 
-/* [patch for Enabling flash LED for camera]
-  * 2012-03-14, jinsool.lee@lge.com
+/*                                          
+                                   
   */
 extern int lm3559_flash_set_led_state(int state);
 
@@ -472,7 +472,7 @@ error:
 				i2c_client.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
 				rc = msm_camera_i2c_write(&i2c_client, 0x01,
 					0x46, MSM_CAMERA_I2C_BYTE_DATA);
-				flash_wq = create_workqueue("my_queue");
+				flash_wq = alloc_workqueue("my_queue",WQ_MEM_RECLAIM,1);
 				work = (struct flash_work *)kmalloc(sizeof(struct flash_work), GFP_KERNEL);
 				INIT_WORK( (struct work_struct *)work, flash_wq_function );
 				setup_timer(&flash_timer, flash_timer_callback, 0);
@@ -806,10 +806,10 @@ int msm_flash_ctrl(struct msm_camera_sensor_info *sdata,
 	switch (flash_info->flashtype) {
 	case LED_FLASH:
 	#if !defined(CONFIG_LGE_GK_CAMERA)
-		/* [patch for Enabling flash LED for camera]
-		* 2012-03-14, jinsool.lee@lge.com
-		*  This feature is for G... 
-		*/
+		/*                                          
+                                   
+                              
+  */
 
 		rc = lm3559_flash_set_led_state(flash_info->ctrl_data.led_state);
 

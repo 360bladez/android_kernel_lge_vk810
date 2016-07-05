@@ -23,12 +23,10 @@
 #define CE1702_STATUS_ON	1
 #define CE1702_STATUS_OFF	0
 
-/*LGE_UPDATE_S Color Engine Switch for camera, 2012.11.19, elin.lee@lge.com*/
+/*                                                                         */
 #ifdef CONFIG_MACH_LGE
 #if defined (CONFIG_FB_MSM_MIPI_LGIT_VIDEO_FHD_INVERSE_PT) || defined (CONFIG_FB_MSM_MIPI_LGIT_VIDEO_FHD_INVERSE_PT_PANEL)
-#if defined (CONFIG_LGIT_COLOR_ENGINE_SWITCH)
 #define LGIT_COLOR_ENGINE_SWITCH
-#endif
 
 #ifdef LGIT_COLOR_ENGINE_SWITCH
 extern int mipi_lgit_lcd_color_engine_off(void);
@@ -36,9 +34,9 @@ extern int mipi_lgit_lcd_color_engine_on(void);
 #endif
 #endif
 #endif
-/*LGE_UPDATE_E Color Engine Switch for camera, 2012.11.19, elin.lee@lge.com*/
+/*                                                                         */
 
-/* LGE_CHANGE_S, Define For CE1702 Sensor To Understand Easier, 2012.10.22, jungki.kim[Start] */
+/*                                                                                            */
 static bool ce1702_is_doing_touchaf = false;
 static int ce1702_focus_mode = -1;
 static int ce1702_manual_focus_val = -1;
@@ -57,8 +55,8 @@ static int ce1702_deferred_focus_length;
 static int ce1702_deferred_af_start;
 static int ce1702_need_thumbnail;
 static int ce1702_asd_onoff = 0;
-static bool ce1702_just_changed_to_preview = false;	/* LGE_CHANGE, remove flashing at last, 2013.2.21, jungki.kim@lge.com */
-/* LGE_CHANGE_E, Define For CE1702 Sensor To Understand Easier, 2012.10.22, jungki.kim[End] */
+static bool ce1702_just_changed_to_preview = false;	/*                                                                    */
+/*                                                                                          */
 
 static int ce1702_i2c_probe(struct i2c_client *client,const struct i2c_device_id *id);
 static int ce1702_i2c_remove(struct i2c_client *client);
@@ -78,18 +76,18 @@ static struct delayed_work      ce1702_ISP_down_delayed_wq ;
 static struct workqueue_struct  *wq_ce1702_ISP_down_work_queue;
 
 static int ce1702_frame_mode = CE1702_FRAME_MAX;
-/* LGE_CHANGE_S, Define For CE1702 output mode, 2012.11.10, elin.lee*/
+/*                                                                  */
 static int isPreviewMode = 0;
 static int isSingleCaptureMode = 0;
 static int isTMSMode = 0;
 static int isBurstMode = 0;
 static int isHDRMode = 0;
 static int isLowLightShotMode = 0;
-/* LGE_CHANGE_E, Define For CE1702 output mode, 2012.11.10, elin.lee*/
+/*                                                                  */
 
-/* LGE_CHANGE_S, add the changing image size for GK project, 2012.10.19 youngil.yun@lge.com */
+/*                                                                                          */
 static struct dimen_t size_info;
-/* LGE_CHANGE_E, add the changing image size for GK project, 2012.10.19 youngil.yun@lge.com */
+/*                                                                                          */
 
 static struct msm_camera_i2c_reg_conf ce1702_start_settings[] = {
 #ifdef CE1702_YUV_IMAGE_PREVIEW_MODE
@@ -165,7 +163,7 @@ static struct msm_camera_i2c_conf_array ce1702_confs[] = {
 };
 
 static struct msm_sensor_output_info_t ce1702_dimensions[] = {
-/* LGE_CHANGE_S, Change Support Sensor Info For GK/GV, 2012.10.25, jungki.kim[Start] */
+/*                                                                                   */
 	{
 		/* full size  15fps*/
 		.x_output = 0x1040, /* 4160 */
@@ -276,7 +274,7 @@ static struct msm_sensor_output_info_t ce1702_dimensions[] = {
 		.op_pixel_clk = 225600000,
 		.binning_factor = 1,
 	},
-/* LGE_CHANGE_S, Add for TMC and Burst Shot ISP mode, 2012.11.10, elin.lee*/
+/*                                                                        */
       {
 		/* zsl*/
 		.x_output = 0x0500, /* 1280 */
@@ -317,8 +315,8 @@ static struct msm_sensor_output_info_t ce1702_dimensions[] = {
 		.op_pixel_clk = 225600000,
 		.binning_factor = 1,
 	},
-/* LGE_CHANGE_E, Add for TMC and Burst Shot ISP mode, 2012.11.10, elin.lee*/
-/* LGE_CHANGE_E, Change Support Sensor Info For GK/GV, 2012.10.25, jungki.kim[End] */
+/*                                                                        */
+/*                                                                                 */
 };
 
 static struct msm_sensor_output_reg_addr_t ce1702_reg_addr = {
@@ -383,7 +381,7 @@ static struct pm_gpio gpio13_param = {
 		.out_strength   = PM_GPIO_STRENGTH_MED,
 		.function       = PM_GPIO_FUNC_NORMAL,
 };
-/* LGE_CHANGE_S, For GK/GV Rev.E bring-up, 2012.10.26, gayoung85.lee[Start] */
+/*                                                                          */
 static struct pm_gpio gpio27_param = {
 		.direction      = PM_GPIO_DIR_OUT,
 		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
@@ -393,7 +391,7 @@ static struct pm_gpio gpio27_param = {
 		.out_strength   = PM_GPIO_STRENGTH_MED,
 		.function       = PM_GPIO_FUNC_NORMAL,
 };
-/* LGE_CHANGE_E, For GK/GV Rev.E bring-up, 2012.10.26, gayoung85.lee[End] */
+/*                                                                        */
 static struct msm_cam_clk_info ce1702_cam_clk_info[] = {
 	{"cam_clk", MSM_SENSOR_MCLK_24HZ},
 };
@@ -422,7 +420,7 @@ static struct v4l2_subdev_ops ce1702_subdev_ops = {
 	.video  = &ce1702_subdev_video_ops,
 };
 
-/* LGE_CHANGE_S, Support Size Table, 2012.11.15, jungki.kim[Start] */
+/*                                                                 */
 
 static struct ce1702_size_type ce1702_picture_table[] = {
 	{4208, 3120, CE1702_SIZE_13MP},
@@ -542,9 +540,9 @@ uint16_t ce1702_get_supported_size(uint16_t width, uint16_t height, struct ce170
 
 	return rc;
 }
-/* LGE_CHANGE_E, Support Size Table, 2012.11.15, jungki.kim[End] */
+/*                                                               */
 
-// Start LGE_BSP_CAMERA::kyounghoon.noh@lge.com 2012-06-25
+//                                                        
 int32_t ce1702_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 			int update_type, int res)
 {
@@ -570,13 +568,13 @@ int32_t ce1702_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 			rc = ce1702_set_ISP_mode();
 			if (rc < 0)
 				LDBGE("%s: set ISP mode failed \n", __func__);
-/*LGE_UPDATE_S Color Engine Switch for camera, 2012.11.19, elin.lee@lge.com*/
+/*                                                                         */
 #ifdef LGIT_COLOR_ENGINE_SWITCH
                         if(system_state != SYSTEM_BOOTING) {
                                 mipi_lgit_lcd_color_engine_off();
                         }
 #endif
-/*LGE_UPDATE_E Color Engine Switch for camera, 2012.11.19, elin.lee@lge.com*/
+/*                                                                         */
 		}
 		switch (res){
 			case MSM_SENSOR_RES_QTR:
@@ -736,7 +734,7 @@ static int ce1702_i2c_probe(struct i2c_client *client,const struct i2c_device_id
 		return -EFAULT;
 	}
 
-	init_suspend(); //LGE_CHANGE_S [muhan2k] 2009-11-9 Android PJT
+	init_suspend(); //                                            
 	ce1702_sysfs_add(&client->dev.kobj);
 
 	wq_ce1702_ISP_down_work_queue = create_singlethread_workqueue("wq_ce1702_ISP_down_work_queue");
@@ -820,7 +818,7 @@ int32_t ce1702_msm_sensor_disable_i2c_mux(struct msm_camera_i2c_conf *i2c_conf)
 	return 0;
 }
 
-// Initiate Parameters by jungki.kim@lge.com
+//                                          
 void ce1702_param_init(void)
 {
 	ce1702_is_doing_touchaf = false;
@@ -841,14 +839,15 @@ void ce1702_param_init(void)
 	ce1702_deferred_af_start = 0;
 	ce1702_need_thumbnail = true;
 	ce1702_asd_onoff = 0;
-	ce1702_just_changed_to_preview = false;	/* LGE_CHANGE, remove flashing at last, 2013.2.21, jungki.kim@lge.com */
+	ce1702_just_changed_to_preview = false;	/*                                                                    */
 }
 
 int32_t ce1702_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
-	//hw_rev_type lge_bd_rev = lge_get_board_revno();
+	hw_rev_type lge_bd_rev = HW_REV_EVB1;
+	lge_bd_rev = lge_get_board_revno();
 	LDBGI("%s: %d\n", __func__, __LINE__);
 
 	ce1702_param_init();	// init parameters by jungki.kim
@@ -881,11 +880,31 @@ int32_t ce1702_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	rc = gpio_request(ISP_HOST_INT, "ISP_HOST_INT");
 	rc = gpio_request(ISP_STBY, "ISP_STBY");
-
+/*                                                                          */
+#if defined(CONFIG_MACH_APQ8064_GKKT) || defined(CONFIG_MACH_APQ8064_GKSK) || defined(CONFIG_MACH_APQ8064_GKU) || defined(CONFIG_MACH_APQ8064_GKATT) || defined(CONFIG_MACH_APQ8064_GVKT) || defined(CONFIG_MACH_APQ8064_GKGLOBAL)
+	if(lge_bd_rev >= HW_REV_C ||lge_bd_rev == HW_REV_1_0){
+		LDBGI("%s: Revision check! ISP_RST GPIO No.%d\n",__func__,ISP_RST );
+		rc = gpio_request(ISP_RST, "ISP_RST");
+	}
+	if (rc) {
+		LDBGE("%s: PM request gpio failed\n", __func__);
+	}
+#elif defined(CONFIG_MACH_APQ8064_GVDCM)
+	if(lge_bd_rev >= HW_REV_C){
+		LDBGI("%s: Revision check! ISP_RST GPIO No.%d\n",__func__,ISP_RST );
+		rc = gpio_request(ISP_RST, "ISP_RST");
+	}
+	if (rc) {
+		LDBGE("%s: PM request gpio failed\n", __func__);
+	}
+#elif defined(CONFIG_MACH_APQ8064_GVAR_CMCC) || defined(CONFIG_MACH_APQ8064_OMEGAR) || defined(CONFIG_MACH_APQ8064_OMEGA)
+//	LDBGI("%s: Revision [%d] ISP_RST GPIO No.%d\n",__func__, lge_bd_rev, ISP_RST);
 	rc = gpio_request(ISP_RST, "ISP_RST");
 	if (rc) {
 		LDBGE("%s: PM request gpio failed\n", __func__);
 	}
+#endif
+/*                                                                        */
 
 	rc = msm_camera_config_vreg(&s_ctrl->sensor_i2c_client->client->dev,
 			s_ctrl->sensordata->sensor_platform_info->cam_vreg,
@@ -925,21 +944,75 @@ int32_t ce1702_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	rc =pm8xxx_gpio_config(ISP_HOST_INT, &gpio20_param);
 	rc =pm8xxx_gpio_config(ISP_STBY, &gpio13_param);
-
+/*                                                                          */
+#if defined(CONFIG_MACH_APQ8064_GKKT) || defined(CONFIG_MACH_APQ8064_GKSK) || defined(CONFIG_MACH_APQ8064_GKU) || defined(CONFIG_MACH_APQ8064_GKATT) || defined(CONFIG_MACH_APQ8064_GVKT) || defined(CONFIG_MACH_APQ8064_GKGLOBAL)
+	if(lge_bd_rev >= HW_REV_C ||lge_bd_rev == HW_REV_1_0){
+		LDBGI("%s: Revision check! ISP_RST GPIO No.%d\n",__func__,ISP_RST );
+		rc =pm8xxx_gpio_config(ISP_RST, &gpio27_param);
+	}
+	if (rc) {
+		LDBGE("%s: pm8xxx_gpio_config on failed\n", __func__);
+	}
+#elif defined(CONFIG_MACH_APQ8064_GVDCM)
+	if(lge_bd_rev >= HW_REV_C){
+		LDBGI("%s: Revision check! ISP_RST GPIO No.%d\n",__func__,ISP_RST );
+		rc =pm8xxx_gpio_config(ISP_RST, &gpio27_param);
+	}
+	if (rc) {
+		LDBGE("%s: pm8xxx_gpio_config on failed\n", __func__);
+	}
+#elif defined(CONFIG_MACH_APQ8064_GVAR_CMCC)|| defined(CONFIG_MACH_APQ8064_OMEGAR) || defined(CONFIG_MACH_APQ8064_OMEGA)
+	LDBGI("%s: Revision check! ISP_RST GPIO No.%d\n",__func__,ISP_RST );
 	rc =pm8xxx_gpio_config(ISP_RST, &gpio27_param);
 	if (rc) {
 		LDBGE("%s: pm8xxx_gpio_config on failed\n", __func__);
 	}
+#endif
+/*                                                                        */
 
 	rc = gpio_direction_output(ISP_STBY, 1);
 
 	mdelay(1);
 
+/*                                                                          */
+#if defined(CONFIG_MACH_APQ8064_GVAR_CMCC)|| defined(CONFIG_MACH_APQ8064_OMEGAR) || defined(CONFIG_MACH_APQ8064_OMEGA)
 	rc = gpio_direction_output(ISP_RST, 1);
 	if (rc < 0) {
 		LDBGE("%s: config gpio failed\n", __func__);
 		goto config_gpio_failed;
 	}
+#else
+#if defined(CONFIG_MACH_APQ8064_GKKT) || defined(CONFIG_MACH_APQ8064_GKSK) || defined(CONFIG_MACH_APQ8064_GKU) || defined(CONFIG_MACH_APQ8064_GKATT) || defined(CONFIG_MACH_APQ8064_GVKT) || defined(CONFIG_MACH_APQ8064_GKGLOBAL)
+	if(lge_bd_rev >= HW_REV_C ||lge_bd_rev == HW_REV_1_0)
+	{
+		LDBGI("%s: Revision check! ISP_RST GPIO No.%d\n",__func__,ISP_RST );
+		rc = gpio_direction_output(ISP_RST, 1);
+		if (rc < 0) {
+			LDBGE("%s: config gpio failed\n", __func__);
+			goto config_gpio_failed;
+		}
+	}else
+#elif defined(CONFIG_MACH_APQ8064_GVDCM)
+	if(lge_bd_rev >= HW_REV_C)
+	{
+		LDBGI("%s: Revision check! ISP_RST GPIO No.%d\n",__func__,ISP_RST );
+		rc = gpio_direction_output(ISP_RST, 1);
+		if (rc < 0) {
+			LDBGE("%s: config gpio failed\n", __func__);
+			goto config_gpio_failed;
+		}
+	}else
+#endif
+
+/*                                                                        */
+	{
+		rc = msm_camera_config_gpio_table(data, 1);
+		if (rc < 0) {
+			LDBGE("%s: config gpio failed\n", __func__);
+			goto config_gpio_failed;
+		}
+	}
+#endif
 
 	usleep_range(1000, 2000);
 	if (data->sensor_platform_info->ext_power_ctrl != NULL)
@@ -952,7 +1025,26 @@ int32_t ce1702_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	return rc;
 
 enable_clk_failed:
+/*                                                                          */
+#if defined(CONFIG_MACH_APQ8064_GVAR_CMCC)|| defined(CONFIG_MACH_APQ8064_OMEGAR) || defined(CONFIG_MACH_APQ8064_OMEGA)
 	rc = gpio_direction_output(ISP_RST, 0);
+#else
+#if defined(CONFIG_MACH_APQ8064_GKKT) || defined(CONFIG_MACH_APQ8064_GKSK) || defined(CONFIG_MACH_APQ8064_GKU) || defined(CONFIG_MACH_APQ8064_GKATT) || defined(CONFIG_MACH_APQ8064_GVKT) || defined(CONFIG_MACH_APQ8064_GKGLOBAL) || defined(CONFIG_MACH_APQ8064_OMEGAR) || defined(CONFIG_MACH_APQ8064_OMEGA)
+	if(lge_bd_rev >= HW_REV_C ||lge_bd_rev == HW_REV_1_0){
+		LDBGI("%s: Revision check! ISP_RST GPIO No.%d\n",__func__,ISP_RST );
+		rc = gpio_direction_output(ISP_RST, 0);
+	}else
+#elif defined(CONFIG_MACH_APQ8064_GVDCM)
+	if(lge_bd_rev >= HW_REV_C){
+		LDBGI("%s: Revision check! ISP_RST GPIO No.%d\n",__func__,ISP_RST );
+		rc = gpio_direction_output(ISP_RST, 0);
+	}else
+#endif
+/*                                                                        */
+	{
+		msm_camera_config_gpio_table(data, 0);
+	}
+#endif
 
 config_gpio_failed:
 	msm_camera_enable_vreg(&s_ctrl->sensor_i2c_client->client->dev,
@@ -981,26 +1073,45 @@ int32_t ce1702_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
-	//hw_rev_type lge_bd_rev = lge_get_board_revno();
+	hw_rev_type lge_bd_rev = HW_REV_EVB1;
+	lge_bd_rev = lge_get_board_revno();
 	LDBGI("%s\n", __func__);
 
-/*LGE_UPDATE_S Color Engine Switch for camera, 2012.11.19, elin.lee@lge.com*/
+/*                                                                         */
 #ifdef LGIT_COLOR_ENGINE_SWITCH
     if(system_state != SYSTEM_BOOTING) {
       mipi_lgit_lcd_color_engine_on();
     }
 #endif
-/*LGE_UPDATE_E Color Engine Switch for camera, 2012.11.19, elin.lee@lge.com*/
+/*                                                                         */
 
-	rc = ce1702_set_VCM_default_position(s_ctrl);//20121212, hyungmoo.huh@lge.com, for Tick noise
+	rc = ce1702_set_VCM_default_position(s_ctrl);//                                              
 
 	if (data->sensor_platform_info->i2c_conf &&
 		data->sensor_platform_info->i2c_conf->use_i2c_mux)
 		ce1702_msm_sensor_disable_i2c_mux(
 			data->sensor_platform_info->i2c_conf);
-
+/*                                                                          */
+#if defined(CONFIG_MACH_APQ8064_GVAR_CMCC)|| defined(CONFIG_MACH_APQ8064_OMEGAR) || defined(CONFIG_MACH_APQ8064_OMEGA)
 	rc = gpio_direction_output(ISP_RST, 0);
+#else
+#if defined(CONFIG_MACH_APQ8064_GKKT) || defined(CONFIG_MACH_APQ8064_GKSK) || defined(CONFIG_MACH_APQ8064_GKU) || defined(CONFIG_MACH_APQ8064_GKATT) || defined(CONFIG_MACH_APQ8064_GVKT) || defined(CONFIG_MACH_APQ8064_GKGLOBAL)
+	if(lge_bd_rev >= HW_REV_C ||lge_bd_rev == HW_REV_1_0){
+		LDBGI("%s: Revision check! ISP_RST GPIO No.%d\n",__func__,ISP_RST );
+		rc = gpio_direction_output(ISP_RST, 0);
+ 	}else
+#elif defined(CONFIG_MACH_APQ8064_GVDCM)
+	if(lge_bd_rev >= HW_REV_C){
+		LDBGI("%s: Revision check! ISP_RST GPIO No.%d\n",__func__,ISP_RST );
+		rc = gpio_direction_output(ISP_RST, 0);
+	}else
+#endif
 
+/*                                                                        */
+ 	{
+		msm_camera_config_gpio_table(data, 0);
+ 	}
+#endif
 	if (data->sensor_platform_info->ext_power_ctrl != NULL)
 		data->sensor_platform_info->ext_power_ctrl(0);
 	msm_cam_clk_enable(&s_ctrl->sensor_i2c_client->client->dev,
@@ -1014,7 +1125,7 @@ int32_t ce1702_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 		LDBGE("%s: gpio_direction_output enable failed\n", __func__);
 	}
 
-/* LGE_CHANGE_S, Avoid Kernel Panic, 2012.11.12, jungki.kim[Start] */
+/*                                                                 */
 	if(s_ctrl->reg_ptr != NULL) {
 		msm_camera_enable_vreg(&s_ctrl->sensor_i2c_client->client->dev,
 			s_ctrl->sensordata->sensor_platform_info->cam_vreg,
@@ -1034,13 +1145,25 @@ int32_t ce1702_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 		// NULL!
 		LDBGE("%s: No Regulator Pointer!\n", __func__);
 	}
-/* LGE_CHANGE_E, Avoid Kernel Panic, 2012.11.12, jungki.kim[End] */
+/*                                                               */
 
 	gpio_free(ISP_HOST_INT);
 	gpio_free(ISP_STBY);
-
+/*                                                                          */
+#if defined(CONFIG_MACH_APQ8064_GKKT) || defined(CONFIG_MACH_APQ8064_GKSK) || defined(CONFIG_MACH_APQ8064_GKU) || defined(CONFIG_MACH_APQ8064_GKATT) || defined(CONFIG_MACH_APQ8064_GVKT) || defined(CONFIG_MACH_APQ8064_GKGLOBAL)
+		LDBGI("%s: Revision check! ISP_RST GPIO No.%d\n",__func__,ISP_RST );
+		if(lge_bd_rev >= HW_REV_C ||lge_bd_rev == HW_REV_1_0){
+		gpio_free(ISP_RST);
+			}
+#elif defined(CONFIG_MACH_APQ8064_GVDCM)
+if(lge_bd_rev >= HW_REV_C){
+	LDBGI("%s: Revision check! ISP_RST GPIO No.%d\n",__func__,ISP_RST );
 	gpio_free(ISP_RST);
-
+}
+#elif defined(CONFIG_MACH_APQ8064_GVAR_CMCC)|| defined(CONFIG_MACH_APQ8064_OMEGAR) || defined(CONFIG_MACH_APQ8064_OMEGA)
+	gpio_free(ISP_RST);
+#endif
+/*                                                                        */
 	ce1702_frame_mode = CE1702_FRAME_MAX;
 	if(isPreviewMode == 1 || isSingleCaptureMode == 1 || isTMSMode==1 || isBurstMode==1 || isHDRMode==1 || isLowLightShotMode==1){
 		LDBGE("%s: Preview is still running!!! isPreviewMode = %d, isSingleCaptureMode = %d, isTMSMode=%d, isBurstMode=%d, isHDRMode=%d, isLowLightShotMode=%d\n",
@@ -1070,7 +1193,7 @@ int32_t ce1702_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	}
 	return CE1702_OK ;
 }
-//youngil.yun@lge.com 2012-07-09 - end
+//                                    
 
 
 //We need to excute these function lately because these have to try under previewing condition.
@@ -1081,7 +1204,7 @@ void ce1702_sensor_set_param_lately(struct msm_sensor_ctrl_t *s_ctrl)
 		Then I check whether it is previewing or not and it is not on previewing!!
 		So I need it try later.
 	*/
-	ce1702_just_changed_to_preview = true;	/* LGE_CHANGE, remove flashing at last, 2013.2.21, jungki.kim@lge.com */
+	ce1702_just_changed_to_preview = true;	/*                                                                    */
 
 	LDBGI("%s: ce1702_aec_awb_lock=[%d] EXTRA WORK TO DO!\n", __func__, ce1702_aec_awb_lock);
 	ce1702_set_aec_awb_lock(s_ctrl, ce1702_aec_awb_lock);
@@ -1109,7 +1232,7 @@ void ce1702_sensor_set_param_lately(struct msm_sensor_ctrl_t *s_ctrl)
 		}
 	}
 
-	ce1702_just_changed_to_preview = false;	/* LGE_CHANGE, remove flashing at last, 2013.2.21, jungki.kim@lge.com */
+	ce1702_just_changed_to_preview = false;	/*                                                                    */
 }
 
 void ce1702_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
@@ -1159,7 +1282,7 @@ void ce1702_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 
 					LDBGI("ce1702_get_supported_size: ce1702_postview_table\n");
 					cnt = sizeof(ce1702_postview_table) / sizeof(ce1702_postview_table[0]);
-					/* LGE_CHANGE_S, fix zoom capture, 2012.11.21, gayoung85.lee[Start] */
+					/*                                                                  */
 					if(size_info.picture_width >= size_info.preview_width && size_info.picture_height >= size_info.preview_height)
 				        	wdata[0] = ce1702_get_supported_size(size_info.preview_width, size_info.preview_height, ce1702_postview_table, cnt);
 					else
@@ -1183,7 +1306,7 @@ void ce1702_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 						LDBGE("%s: ce1702_i2c_write failed(3) \n", __func__);
 
 					wdata[0] = 0x00;
-					wdata[1] = 0x80; //1207 yt.jeon@lge.com increase compression rate. 0x60
+					wdata[1] = 0x80; //                                                    
 					wdata[2] = 0x0C; //0x09;
 					wdata[3] = 0x20;//0x320(800), 0xD0
 					wdata[4] = 0x03; //0x07
@@ -1196,7 +1319,7 @@ void ce1702_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 					LDBGI("ce1702_get_supported_size: ce1702_thumbnail_table\n");
 					cnt = sizeof(ce1702_thumbnail_table) / sizeof(ce1702_thumbnail_table[0]);
 					wdata[0] = 0x00;
-					wdata[1] = 0x80; //1207 yt.jeon@lge.com increase compression rate. 0x60
+					wdata[1] = 0x80; //                                                    
 					wdata[2] = 0x0C; //0x09;
 					wdata[3] = 0x20;//0x320(800), 0xD0
 					wdata[4] = 0x03; //0x07
@@ -1213,7 +1336,7 @@ void ce1702_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 						LDBGE("%s: ce1702_i2c_write failed(4) \n", __func__);
 
 					ce1702_set_zoom_ratio(s_ctrl, ce1702_zoom_ratio);
-					/* LGE_CHANGE_E, fix zoom capture, 2012.11.21, gayoung85.lee[End] */
+					/*                                                                */
 
 					wdata[0] = 0x14;
 					wdata[1] = 0x01;
@@ -1232,12 +1355,18 @@ void ce1702_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 
 					if(ce1702_cam_preview == PREVIEW_MODE_CAMCORDER)
 						if((size_info.video_width==320 && size_info.video_height==240)||
-							(size_info.video_width==176 && size_info.video_height==144))
+							(size_info.video_width==176 && size_info.video_height==144)){
+							LDBGE("%s: set 15fps\n", __func__);
 							wdata[0] = 0x0F;		//set 15fps
-						else
+						}
+						else{
+							LDBGE("%s: set 30fps camcorder\n", __func__);
 							wdata[0] = 0x1E;		//set 30fps
-					else
+						}
+					else{
+						LDBGE("%s: set 30fps camera\n", __func__);
 						wdata[0] = 0x1E;		//set 30fps
+					}
 					wdata[1] = 0x00;
 					rc = ce1702_i2c_write(ce1702_s_interface_ctrl->sensor_i2c_addr, 0x5A, wdata, 2);
 					if (rc < 0)
@@ -1281,12 +1410,12 @@ void ce1702_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 				}
 
 				LDBGI("%s: ce1702_i2c_read successed, CE1702_MODE_PREVIEW result=0x%02x, isPreviewMode=%d \n", __func__, result, isPreviewMode);
-/* LGE_CHANGE_S, Setting face detectionf for ASD, 2013.1.12, gayoung85.lee[Start] */
+/*                                                                                */
 					if(ce1702_asd_onoff){
 						LDBGI("[G-young] %s : setting face detecting on \n",__func__);
 						ce1702_set_face_detect(ce1702_asd_onoff);
 					}
-/* LGE_CHANGE_E, Setting face detectionf for ASD, 2013.1.12, gayoung85.lee[End] */
+/*                                                                              */
 			}
 			break;
 
@@ -1294,9 +1423,9 @@ void ce1702_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 			if(isSingleCaptureMode == 0){
 				LDBGE("%s: CE1702_MODE_SINGLE_SHOT start\n", __func__);
 
-				/* LGE_CHANGE_S, For Snapshot Flash, 2012.10.22, jungki.kim[Start] */
+				/*                                                                 */
 				ce1702_sensor_set_led_flash_mode_snapshot(ce1702_led_flash_mode);
-				/* LGE_CHANGE_E, For Snapshot Flash, 2012.10.22, jungki.kim[End] */
+				/*                                                               */
 
 				ce1702_set_exif_rotation_to_isp();
 
@@ -1349,18 +1478,18 @@ void ce1702_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 		case CE1702_MODE_TMS_SHOT:
 			if(isTMSMode ==0){
 				LDBGI("%s: CE1702_MODE_TMS_SHOT start\n", __func__);
-			        // LGE_CHANGE_S, rotation fixed, 2012.10.24 elin.lee@lge.com
+			        //                                                          
 			        wdata[0] = 0x03;
 			        rc = ce1702_i2c_write(ce1702_s_interface_ctrl->sensor_i2c_addr, 0xAE, wdata,  1);
 				if (rc < 0)
 					LDBGE("%s: ce1702_i2c_write failed(12) \n", __func__);
-			        // LGE_CHANGE_E, rotation fixed, 2012.10.24 elin.lee@lge.com
+			        //                                                          
 
 			        cnt = sizeof(ce1702_postview_table) / sizeof(ce1702_postview_table[0]);
-				/* LGE_CHANGE_S, fix zoom capture, 2012.11.21, gayoung85.lee[Start] */
+				/*                                                                  */
 			        wdata[0] = ce1702_get_supported_size(size_info.picture_width, size_info.picture_height, ce1702_postview_table, cnt);
 			        cnt = sizeof(ce1702_picture_table) / sizeof(ce1702_picture_table[0]);
-				/* LGE_CHANGE_S, fix zoom capture, 2012.11.21, gayoung85.lee[Start] */
+				/*                                                                  */
 			        wdata[1] = ce1702_get_supported_size(size_info.picture_width, size_info.picture_height, ce1702_picture_table, cnt);
 			        wdata[2] = 0x06;
 			        wdata[3] = 0x00;
@@ -1765,7 +1894,7 @@ void ce1702_set_preview_assist_mode(struct msm_sensor_ctrl_t *s_ctrl, uint8_t mo
 		LDBGE("%s: ce1702_i2c_write failed \n", __func__);
 }
 
-// Color Effect by Jungki.kim@lge.com
+//                                   
 // CMD : 0x3D
 // DATA : 0x05
 int32_t ce1702_set_special_effect(struct msm_sensor_ctrl_t *s_ctrl, uint8_t effect)
@@ -1825,7 +1954,7 @@ int32_t ce1702_set_special_effect(struct msm_sensor_ctrl_t *s_ctrl, uint8_t effe
 	return rc;
 }
 
-// Brightness by Jungki.kim@lge.com
+//                                 
 // CMD : 0x04
 // DATA : 0x02
 //To-Do : very little change. Need to improve!
@@ -1978,10 +2107,10 @@ int8_t ce1702_start_af(struct msm_sensor_ctrl_t *s_ctrl)
 			ce1702_is_doing_touchaf = false;
 		}
 		else {
-			/* LGE_CHANGE_S, remove flashing at last, 2013.1.21, jungki.kim[Start] */
+			/*                                                                     */
 			//ce1702_sensor_set_led_flash_mode_for_AF(ce1702_led_flash_mode);
 			if(!ce1702_just_changed_to_preview)	ce1702_sensor_set_led_flash_mode_for_AF(ce1702_led_flash_mode);
-			/* LGE_CHANGE_E, remove flashing at last, 2013.1.21, jungki.kim[End] */
+			/*                                                                   */
 			data = 0x05; // Area ON!
 			rc = ce1702_i2c_write(ce1702_s_interface_ctrl->sensor_i2c_addr, 0x42, &data, 1); // control preview assist
 			cnt = 0;
@@ -2002,10 +2131,10 @@ int8_t ce1702_start_af(struct msm_sensor_ctrl_t *s_ctrl)
 			data = ce1702_focus_mode == AF_MODE_MACRO ? 0x01 : 0x00;
 			ce1702_i2c_write(ce1702_s_interface_ctrl->sensor_i2c_addr, 0x20, &data, 1);
 			ce1702_check_af_status(TRUE);
-			/* LGE_CHANGE_S, remove flashing at last, 2013.1.21, jungki.kim[Start] */
+			/*                                                                     */
 			//ce1702_sensor_set_led_flash_mode_for_AF(ce1702_led_flash_mode);
 			if(!ce1702_just_changed_to_preview)	ce1702_sensor_set_led_flash_mode_for_AF(ce1702_led_flash_mode);
-			/* LGE_CHANGE_E, remove flashing at last, 2013.1.21, jungki.kim[End] */
+			/*                                                                   */
 			rc = ce1702_i2c_write(ce1702_s_interface_ctrl->sensor_i2c_addr, 0x23, NULL, 0);
 			cnt = 0;
 			do {
@@ -2079,12 +2208,12 @@ int8_t ce1702_stop_af(struct msm_sensor_ctrl_t *s_ctrl)
 		LDBGI("%s: Stop [TOUCH AF]\n", __func__);
 		ce1702_set_window(s_ctrl, window, SET_AREA_AF_OFF);
 	}
-/* LGE_CHANGE_S, Setting face detectionf for ASD, 2013.1.12, gayoung85.lee[Start] */
+/*                                                                                */
 	if(ce1702_asd_onoff){
 		LDBGI("[G-young] %s : setting face detecting on \n",__func__);
 		ce1702_set_face_detect(ce1702_asd_onoff);
 	}
-/* LGE_CHANGE_E, Setting face detectionf for ASD, 2013.1.12, gayoung85.lee[End] */
+/*                                                                              */
 	ce1702_is_doing_touchaf = false;
 	return rc;
 }
@@ -2327,7 +2456,7 @@ int8_t ce1702_set_wb_setting(struct msm_sensor_ctrl_t *s_ctrl, uint8_t wb)
 		case CAMERA_WB_FLUORESCENT:
 			wb_mode = 0x01;
 			data[0] = 0x10;
-#if defined(CONFIG_MACH_APQ8064_GKKT) ||defined(CONFIG_MACH_APQ8064_GKSK)||defined(CONFIG_MACH_APQ8064_GKU)
+#if defined(CONFIG_MACH_APQ8064_GKKT) ||defined(CONFIG_MACH_APQ8064_GKSK)||defined(CONFIG_MACH_APQ8064_GKU) || defined(CONFIG_MACH_APQ8064_OMEGAR) || defined(CONFIG_MACH_APQ8064_OMEGA) || defined(CONFIG_MACH_APQ8064_GVKT)
 			data[1] = 0x03;
 			LDBGI("%s: setting CAMERA_WB_FLUORESCENT for F240 (TL84)  value = %d\n", __func__, data[1]);
 #else
@@ -2476,7 +2605,7 @@ int8_t ce1702_set_manual_focus_length(struct msm_sensor_ctrl_t *s_ctrl, int32_t 
 	}
 	LDBGE("%s: AF-T stop check [count %d]	= %x \n", __func__, cnt, rdata);
 
-	focus_val = 610 - (10*focus_val);  //20121212, hyungmoo.huh@lge.com, Need to use EEPROM data for accuracy
+	focus_val = 610 - (10*focus_val);  //                                                                    
 	data[0] = 0x01;	// absolut position
 	data[1] = focus_val & 0xFF; // x lower
 	data[2] = focus_val >> 0x08; // x upper
@@ -2490,7 +2619,7 @@ int8_t ce1702_set_manual_focus_length(struct msm_sensor_ctrl_t *s_ctrl, int32_t 
 	return rc;
 }
 
-/* LGE_CHANGE_S, Get Battery Temperature For Flash, 2012.12.7, jungki.kim[Start] */
+/*                                                                               */
 int get_pm8921_batt_temp(void)
 {
 	int rc = 0;
@@ -2504,9 +2633,9 @@ int get_pm8921_batt_temp(void)
 	rc = (int)((int)result.physical / 10);
 	return rc;
 }
-/* LGE_CHANGE_E, Get Battery Temperature For Flash, 2012.12.7, jungki.kim[End] */
+/*                                                                             */
 
-/* LGE_CHANGE_S, Set Flash LED Mode For Preview, 2012.10.22, jungki.kim[Start] */
+/*                                                                             */
 int8_t ce1702_sensor_set_led_flash_mode(struct msm_sensor_ctrl_t *s_ctrl, int32_t led_mode)
 {
 	int8_t rc = 0;
@@ -2587,9 +2716,13 @@ int8_t ce1702_sensor_set_led_flash_mode_for_AF(int32_t led_mode)
 		case FLASH_LED_TORCH:	//torch
 			data[0] = 0x00;
 			data[1] = 0x00;
-/* LGE_CHANGE_S, GV wants to use the lowest torch mode, 2013.1.29, jungki.kim[Start] */
+/*                                                                                   */
+#ifdef CONFIG_MACH_APQ8064_GVDCM
+			data[2] = 0x00;
+#else
 			data[2] = 0x03;	// 225mA
-/* LGE_CHANGE_E, GV wants to use the lowest torch mode, 2013.1.29, jungki.kim[End] */
+#endif
+/*                                                                                 */
 
 			data[3] = 0x00;
 			rc = ce1702_i2c_write(ce1702_s_interface_ctrl->sensor_i2c_addr, 0xB3, data, 4);
@@ -2614,9 +2747,9 @@ int8_t ce1702_sensor_set_led_flash_mode_for_AF(int32_t led_mode)
 
 	return rc;
 }
-/* LGE_CHANGE_E, Set Flash LED Mode For Preview, 2012.10.22, jungki.kim[End] */
+/*                                                                           */
 
-/* LGE_CHANGE_S, Set Flash LED Mode For Snapshot, 2012.10.22, jungki.kim[Start] */
+/*                                                                              */
 int8_t ce1702_sensor_set_led_flash_mode_snapshot(int32_t led_mode)
 {
 	int8_t rc = 0;
@@ -2698,9 +2831,13 @@ int8_t ce1702_sensor_set_led_flash_mode_snapshot(int32_t led_mode)
 		case FLASH_LED_TORCH:	// use for movie
 			data[0] = 0x00;
 			data[1] = 0x00;
-/* LGE_CHANGE_S, GV wants to use the lowest torch mode, 2013.1.29, jungki.kim[Start] */
+/*                                                                                   */
+#ifdef CONFIG_MACH_APQ8064_GVDCM
+			data[2] = 0x00;
+#else
 			data[2] = 0x03;	// 225mA
-/* LGE_CHANGE_E, GV wants to use the lowest torch mode, 2013.1.29, jungki.kim[End] */
+#endif
+/*                                                                                 */
 			data[3] = 0x00;
 			rc = ce1702_i2c_write(ce1702_s_interface_ctrl->sensor_i2c_addr, 0xB3, data, 4);
 			if (rc < 0)
@@ -2718,7 +2855,7 @@ int8_t ce1702_sensor_set_led_flash_mode_snapshot(int32_t led_mode)
 
 	return rc;
 }
-/* LGE_CHANGE_E, Set Flash LED Mode For Snapshot, 2012.10.22, jungki.kim[End] */
+/*                                                                            */
 
 //Set Antibanding for CE1702 by jungki.kim
 int8_t ce1702_sensor_set_antibanding(struct msm_sensor_ctrl_t *s_ctrl, int32_t antibanding)
@@ -2761,7 +2898,7 @@ int8_t ce1702_sensor_set_antibanding(struct msm_sensor_ctrl_t *s_ctrl, int32_t a
 	return rc;
 }
 
-/* LGE_CHANGE_S, add the object tracking method for GK project, 2012.10.19 youngil.yun@lge.com */
+/*                                                                                             */
 int32_t ce1702_object_tracking(struct msm_sensor_ctrl_t *s_ctrl, struct rec_t * rect_info)
 {
 	uint8_t wdata[10];
@@ -2821,9 +2958,9 @@ int32_t ce1702_object_tracking(struct msm_sensor_ctrl_t *s_ctrl, struct rec_t * 
 
 	return CE1702_OK ;
 }
-/* LGE_CHANGE_E, add the object tracking method for GK project, 2012.10.19 youngil.yun@lge.com */
+/*                                                                                             */
 
-/* LGE_CHANGE_S, Support AEC/AWB Lock For CE1702, 2012.10.22, jungki.kim[Start] */
+/*                                                                              */
 int8_t ce1702_set_aec_awb_lock(struct msm_sensor_ctrl_t *s_ctrl, int32_t islock)
 {
 	int8_t rc = 0;
@@ -2894,9 +3031,9 @@ int8_t ce1702_set_aec_awb_lock(struct msm_sensor_ctrl_t *s_ctrl, int32_t islock)
 	}
 	return rc;
 }
-/* LGE_CHANGE_E, Support AEC/AWB Lock For CE1702, 2012.10.22, jungki.kim[End] */
+/*                                                                            */
 
-/* LGE_CHANGE_S, Get Current Previewing Mode, 2012.10.25, jungki.kim[Start] */
+/*                                                                          */
 int8_t ce1702_get_cam_open_mode(struct msm_sensor_ctrl_t *s_ctrl, int32_t cam_op_mode)
 {
 	int8_t rc = 0;
@@ -2909,9 +3046,9 @@ int8_t ce1702_get_cam_open_mode(struct msm_sensor_ctrl_t *s_ctrl, int32_t cam_op
 	return rc;
 
 }
-/* LGE_CHANGE_E, Get Current Previewing Mode, 2012.10.25, jungki.kim[End] */
+/*                                                                        */
 
-/* LGE_CHANGE_S, add the changing image size for GK project, 2012.10.19 youngil.yun@lge.com */
+/*                                                                                          */
 int32_t ce1702_dim_info(struct msm_sensor_ctrl_t *s_ctrl, struct dimen_t* dimension_info)
 {
 	size_info.preview_width = dimension_info->preview_width;
@@ -2930,8 +3067,8 @@ int32_t ce1702_dim_info(struct msm_sensor_ctrl_t *s_ctrl, struct dimen_t* dimens
 
 	return CE1702_OK;
 }
-/* LGE_CHANGE_E, add the changing image size for GK project, 2012.10.19 youngil.yun@lge.com */
-/* LGE_CHANGE_S, Add ISO setting for GK/GV, 2012.10.28, gayoung85.lee[Start] */
+/*                                                                                          */
+/*                                                                           */
 int8_t ce1702_set_iso(struct msm_sensor_ctrl_t *s_ctrl, int32_t iso)
 {
 	uint8_t data[2];
@@ -3020,9 +3157,9 @@ int8_t ce1702_set_iso(struct msm_sensor_ctrl_t *s_ctrl, int32_t iso)
 	return rc;
 
 }
-/* LGE_CHANGE_E, Add ISO setting for GK/GV, 2012.10.28, gayoung85.lee[End] */
+/*                                                                         */
 
-/* LGE_CHANGE_S, Add ManualSceneMode for GK/GV, 2012.10.28, gayoung85.lee[Start] */
+/*                                                                               */
 int8_t ce1702_set_manual_scene_mode(struct msm_sensor_ctrl_t *s_ctrl, int32_t scene_mode)
 {
 	int8_t rc = CE1702_OK;
@@ -3086,9 +3223,9 @@ int8_t ce1702_set_manual_scene_mode(struct msm_sensor_ctrl_t *s_ctrl, int32_t sc
 	}
 	return rc;
 }
-/* LGE_CHANGE_E, Add ManualSceneMode for GK/GV, 2012.10.28, gayoung85.lee[End] */
+/*                                                                             */
 
-/* LGE_CHANGE_S, Insert Model Name And Maker Name In JPEG, 2012.10.31, jungki.kim[Start] */
+/*                                                                                       */
 int8_t ce1702_set_model_name(void)
 {
 	int8_t rc = 0;
@@ -3096,13 +3233,67 @@ int8_t ce1702_set_model_name(void)
 	char *model_name;
 	unsigned char data[MAX_NUMBER_CE1702+2];
 	int i;
+#ifdef CONFIG_MACH_APQ8064_GKKT
+	model_name = "LG-F240K";
+#endif
+#ifdef CONFIG_MACH_APQ8064_GKSK
+	model_name = "LG-F240S";
+#endif
+#if defined(CONFIG_MACH_APQ8064_GKU)
+	model_name = "LG-F240L";
+#endif
+#if defined(CONFIG_MACH_APQ8064_OMEGAR)
+	model_name = "LG-F310LR";
+#endif
+#if defined(CONFIG_MACH_APQ8064_OMEGA)
+	model_name = "LG-F310L";
+#endif
+#ifdef CONFIG_MACH_APQ8064_GKATT
+	model_name = "LG-E980";
+#endif
+#ifdef CONFIG_MACH_APQ8064_GKOPENHK
+	model_name = "LG-E988"; //GK OPEN HK
+#endif
+#if defined(CONFIG_MACH_APQ8064_GKOPENTW) || defined(CONFIG_MACH_APQ8064_GKCHTTW)
+	model_name = "LG-E988"; //GK OPEN TW
+#endif
+#if defined(CONFIG_MACH_APQ8064_GKSHBSG) || defined(CONFIG_MACH_APQ8064_GKOPENSG) || defined(CONFIG_MACH_APQ8064_GKMONSG) || defined(CONFIG_MACH_APQ8064_GKSTLSG)
+	model_name = "LG-E988"; 
+#endif
+#ifdef CONFIG_MACH_APQ8064_GKOPENEU
+	model_name = "LG-E986";  //GK OPEN EU
+#endif
+#ifdef CONFIG_MACH_APQ8064_GKOPENCIS
+	model_name = "LG-E988";  //GK OPEN CIS
+#endif
+#ifdef CONFIG_MACH_APQ8064_GKTCLMX
+	model_name = "LG-E980h";  //GK TCL MX
+#endif
+#ifdef CONFIG_MACH_APQ8064_GKOPENBR
+	model_name = "LG-E989";  //GK OPEN BR
+#endif
+#ifdef CONFIG_MACH_APQ8064_GKVIVBR
+	model_name = "LG-E989";  //GK VIV BR
+#endif
+#if defined(CONFIG_MACH_APQ8064_GKOPENESA) || defined(CONFIG_MACH_APQ8064_GKOPENAME) || defined(CONFIG_MACH_APQ8064_GKOPENMY) || defined(CONFIG_MACH_APQ8064_GKOPENZA) || defined(CONFIG_MACH_APQ8064_GKOPENID) || defined(CONFIG_MACH_APQ8064_GKORIIL)  || defined(CONFIG_MACH_APQ8064_GKCLCZA)
+	model_name = "LG-E988";  
+#endif
+#if defined(CONFIG_MACH_APQ8064_GKOPENIL) || defined(CONFIG_MACH_APQ8064_GKCCMIL) || defined(CONFIG_MACH_APQ8064_GKMIRIL) || defined(CONFIG_MACH_APQ8064_GKPCLIL) || defined(CONFIG_MACH_APQ8064_GKOPENTH)
+	model_name = "LG-E989";  
+#endif
+#ifdef CONFIG_MACH_APQ8064_GVDCM
+	model_name = "L-04E";
+#endif
+#ifdef CONFIG_MACH_APQ8064_GVKT
+	model_name = "LG-F220K";
+#endif
 #ifdef CONFIG_MACH_APQ8064_GVAR_CMCC
-	model_name = "LG-E985";
+	model_name = "LG-E985T";
 #endif
 
 	memset(data, 0, sizeof(data));
 	data[0] = 0x06;	// Model
-	data[1] = strlen(model_name);
+	data[1] = strlen(model_name)+1;/*                                                                                                       */
 	for(i=0;i<strlen(model_name);i++)
 		data[2+i] = model_name[i];
 	data[2+i+1] ='\0';
@@ -3114,7 +3305,7 @@ int8_t ce1702_set_model_name(void)
 
 	memset(data, 0, sizeof(data));
 	data[0] = 0x05;	// Maker
-	data[1] = strlen(maker_name);
+	data[1] = strlen(maker_name)+1;/*                                                                                                       */
 	for(i=0;i<strlen(maker_name);i++)
 		data[2+i] = maker_name[i];
 	data[2+i+1] ='\0';
@@ -3128,7 +3319,7 @@ int8_t ce1702_set_model_name(void)
 
 	return rc;
 }
-/* LGE_CHANGE_E, Insert Model Name And Maker Name In JPEG, 2012.10.31, jungki.kim[End] */
+/*                                                                                     */
 
 int8_t ce1702_set_ISP_mode(void)
 {
@@ -3185,7 +3376,7 @@ int8_t ce1702_set_time(void)
 	return rc;
 }
 
-/* LGE_CHANGE_S, Set Gyro Data, 2012.10.30, jungki.kim[Start] */
+/*                                                            */
 int32_t ce1702_set_gyro_data(struct msm_sensor_ctrl_t *s_ctrl, uint8_t *data)
 {
 	uint8_t data2[32];
@@ -3210,9 +3401,9 @@ int32_t ce1702_set_gyro_data(struct msm_sensor_ctrl_t *s_ctrl, uint8_t *data)
 
 	return CE1702_OK ;
 }
-/* LGE_CHANGE_E, Set Gyro Data, 2012.10.30, jungki.kim[End] */
+/*                                                          */
 
-/* LGE_CHANGE_S, Add WDR mode for GK project, 2012.10.25, gayoung85.lee[Start] */
+/*                                                                             */
 int8_t ce1702_set_WDR(struct msm_sensor_ctrl_t *s_ctrl, int32_t wdr_mode)
 {
 	int8_t rc = 0;
@@ -3305,10 +3496,10 @@ int8_t ce1702_set_WDR(struct msm_sensor_ctrl_t *s_ctrl, int32_t wdr_mode)
 
 	return rc;
 }
-/* LGE_CHANGE_E, Add WDR mode for GK project, 2012.10.25, gayoung85.lee[End] */
+/*                                                                           */
 
 
-/* LGE_CHANGE_S, Insert Rotation Information In EXIF, 2012.10.31, jungki.kim[Start] */
+/*                                                                                  */
 int8_t ce1702_set_exif_rotation(struct msm_sensor_ctrl_t *s_ctrl, int rotation)
 {
 	int8_t rc = 0;
@@ -3355,9 +3546,9 @@ int8_t ce1702_set_exif_rotation_to_isp(void)
 
 	return rc;
 }
-/* LGE_CHANGE_E, Insert Rotation Information In EXIF, 2012.10.31, jungki.kim[End] */
+/*                                                                                */
 
-/* LGE_CHANGE_S, Switch EXIF of GPS , 2012.12.27, jungki.kim[Start] */
+/*                                                                  */
 int8_t ce1702_switching_exif_gps(bool onoff)
 {
 	int8_t rc = 0;
@@ -3376,9 +3567,9 @@ int8_t ce1702_switching_exif_gps(bool onoff)
 
 	return rc;
 }
-/* LGE_CHANGE_E, Switch EXIF of GPS , 2012.12.27, jungki.kim[End] */
+/*                                                                */
 
-/* LGE_CHANGE_S, Set GPS Exif Tags For GK/GV, 2012.11.7, jungki.kim[Start] */
+/*                                                                         */
 int8_t ce1702_set_exif_gps(struct msm_sensor_ctrl_t *s_ctrl, struct k_exif_gps_t *gps_info)
 {
 	int8_t rc = 0;
@@ -3512,9 +3703,9 @@ int8_t ce1702_set_exif_gps(struct msm_sensor_ctrl_t *s_ctrl, struct k_exif_gps_t
 
 	return rc;
 }
-/* LGE_CHANGE_E, Set GPS Exif Tags For GK/GV, 2012.11.7, jungki.kim[End] */
+/*                                                                       */
 
-/* LGE_CHANGE_S, Set ASD, 2013.1.12, gayoung85.lee[Start] */
+/*                                                        */
 int8_t ce1702_asd_enable(struct msm_sensor_ctrl_t *s_ctrl, int32_t asd_onoff)
 {
 	unsigned char wdata[6];
@@ -3548,9 +3739,9 @@ int8_t ce1702_asd_enable(struct msm_sensor_ctrl_t *s_ctrl, int32_t asd_onoff)
 	return CE1702_OK;
 
 }
-/* LGE_CHANGE_E, Set ASD, 2013.1.12, gayoung85.lee[End] */
+/*                                                      */
 
-/* LGE_CHANGE_S, Setting face detection for ASD, 2013.1.12, gayoung85.lee[Start] */
+/*                                                                               */
 int8_t ce1702_set_face_detect(bool asd_onoff)
 {
 	int cnt,  rc ;
@@ -3603,9 +3794,9 @@ int8_t ce1702_set_face_detect(bool asd_onoff)
 	return 0;
 
 }
-/* LGE_CHANGE_E, Setting face detection for ASD, 2013.1.12, gayoung85.lee[End] */
+/*                                                                             */
 
-//20121212, hyungmoo.huh@lge.com, description [START]
+//                                                   
 int8_t ce1702_set_manual_VCM_position(struct msm_sensor_ctrl_t *s_ctrl, int32_t focus_val)
 {
 	int8_t rc = 0;
@@ -3640,7 +3831,7 @@ int8_t ce1702_set_VCM_default_position(struct msm_sensor_ctrl_t *s_ctrl)
 	focus_val = (int32_t)((0xFF00 &(rdata[1] <<0x08)) | rdata[0]);
 	LDBGI("%s: focus value=%d\n", __func__, focus_val);
 
-	//20121212, hyungmoo.huh@lge.com, This position value need to adjust if tick noise happens.
+	//                                                                                         
 
 	if (focus_val > 200)
 	{
@@ -3664,9 +3855,9 @@ int8_t ce1702_set_VCM_default_position(struct msm_sensor_ctrl_t *s_ctrl)
 
 	return rc;
 }
-//20121212, hyungmoo.huh@lge.com, description [END]
+//                                                 
 
-/* LGE_CHANGE_S, fixed cts failure!, 2013.01.07 junghee.eim@lge.com */
+/*                                                                  */
 int32_t ce1702_set_exif_thumbnail_size(struct msm_sensor_ctrl_t *s_ctrl, struct dimen_t* dimension_info)
 {
 	int rc = 0;
@@ -3688,7 +3879,7 @@ int32_t ce1702_set_exif_thumbnail_size(struct msm_sensor_ctrl_t *s_ctrl, struct 
 	LDBGI("[%s] thumbnail = %d x %d\n", __func__, dimension_info->thumbnail_width, dimension_info->thumbnail_heigh);
 	return rc;
 }
-/* LGE_CHANGE_E, fixed cts failure!, 2013.01.07 junghee.eim@lge.com */
+/*                                                                  */
 
 static struct msm_sensor_fn_t ce1702_func_tbl = {
 	.sensor_start_stream = ce1702_sensor_start_stream, //msm_sensor_start_stream,
@@ -3709,28 +3900,28 @@ static struct msm_sensor_fn_t ce1702_func_tbl = {
 	.sensor_adjust_frame_lines = msm_sensor_adjust_frame_lines1,
 	.sensor_get_csi_params = msm_sensor_get_csi_params,
 	.sensor_match_id = ce1702_match_id,
-	.sensor_special_effect = ce1702_set_special_effect,						// Color effect by Jungki.kim@lge.com
-	.sensor_exposure_compensation = ce1702_set_exposure_compensation,	// Adjust Exposure by Jungki.kim@lge.com
-	.sensor_set_focus_mode_setting = ce1702_set_focus_mode_setting,		//AF Mode Settings for CE1702 by jungki.kim@lge.com
+	.sensor_special_effect = ce1702_set_special_effect,						//                                   
+	.sensor_exposure_compensation = ce1702_set_exposure_compensation,	//                                      
+	.sensor_set_focus_mode_setting = ce1702_set_focus_mode_setting,		//                                                 
 	.sensor_start_af = ce1702_start_af,									// Start AF for CE1702 by jungki.kim
 	.sensor_stop_af = ce1702_stop_af,									// Stop AF for CE1702 by jungki.kim
 	.sensor_set_af_window = ce1702_set_af_window,						//Set AF Window for CE1702 by jungki.kim
-	.sensor_whitebalance_setting = ce1702_set_wb_setting,					//White Balance Settings for CE1702 by jungki.kim@lge.com
-	.sensor_set_zoom_ratio = ce1702_set_zoom_ratio,						//Zoom Ratio Settings for CE1702 by jungki.kim@lge.com
-	.sensor_set_manual_focus_length = ce1702_set_manual_focus_length,		//Support Manual Focus by jungki.kim@lge.com
+	.sensor_whitebalance_setting = ce1702_set_wb_setting,					//                                                       
+	.sensor_set_zoom_ratio = ce1702_set_zoom_ratio,						//                                                    
+	.sensor_set_manual_focus_length = ce1702_set_manual_focus_length,		//                                          
 	.sensor_set_led_flash_mode = ce1702_sensor_set_led_flash_mode,		//Support LED Flash only for CE1702 by jungki.kim
 	.sensor_set_antibanding_ce1702 = ce1702_sensor_set_antibanding,		//Set Antibanding for CE1702 by jungki.kim
 	.sensor_set_ae_window = ce1702_set_ae_window,						//Set AE Window for CE1702 by jungki.kim
-	.sensor_object_tracking = ce1702_object_tracking,						//add the object tracking method for GK project, 2012.10.19 youngil.yun@lge.com
+	.sensor_object_tracking = ce1702_object_tracking,						//                                                                             
 	.sensor_set_aec_awb_lock = ce1702_set_aec_awb_lock,					//Support AEC/AWB Lock for CE1702 by jungki.kim
-	.sensor_dim_info = ce1702_dim_info,									//add the sensor setting function for GK project, 2012.10.19 youngil.yun@lge.com
-	.sensor_get_cam_open_mode = ce1702_get_cam_open_mode,			//Get Current Previewing Mode by jungki.kim@lge.com
+	.sensor_dim_info = ce1702_dim_info,									//                                                                              
+	.sensor_get_cam_open_mode = ce1702_get_cam_open_mode,			//                                                 
 	.sensor_set_iso = ce1702_set_iso,									//Support ISO setting for CE1702 by gayoung85.lee
 	.sensor_set_manual_scene_mode = ce1702_set_manual_scene_mode,		//Support ManualSceneMode for CE1702 by gayoung85.lee
-	.sensor_set_gyro_data = ce1702_set_gyro_data,						//Set Gyro Data by junghee.eim@lge.com
+	.sensor_set_gyro_data = ce1702_set_gyro_data,						//                                    
 	.sensor_set_wdr = ce1702_set_WDR,									//Set WDR mode for CE1702 by gayoung85.lee
-	.sensor_set_exif_rotation = ce1702_set_exif_rotation,					//Insert Rotation Information In EXIF by jungki.kim@lge.com
-	.sensor_set_exif_gps = ce1702_set_exif_gps,							//Set GPS Exif Tags For GK/GV by jungki.kim@lge.com
+	.sensor_set_exif_rotation = ce1702_set_exif_rotation,					//                                                         
+	.sensor_set_exif_gps = ce1702_set_exif_gps,							//                                                 
 	.sensor_set_asd_enable = ce1702_asd_enable,							//Support ASD for CE1702 by gayoung85.lee
 	.sensor_set_exif_thumbnail_size = ce1702_set_exif_thumbnail_size,
 };

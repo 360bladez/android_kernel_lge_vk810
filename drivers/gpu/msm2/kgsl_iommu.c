@@ -318,7 +318,7 @@ static void _check_if_freed(struct kgsl_iommu_device *iommu_dev,
 }
 
 static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
-	struct device *dev, unsigned long addr, int flags, void *token)
+	struct device *dev, unsigned long addr, int flags)
 {
 	int ret = 0;
 	struct kgsl_mmu *mmu;
@@ -700,7 +700,7 @@ void *kgsl_iommu_create_pagetable(void)
 
 		if (iommu_pt->domain) {
 			iommu_set_fault_handler(iommu_pt->domain,
-				kgsl_iommu_fault_handler, NULL);
+				kgsl_iommu_fault_handler);
 
 			return iommu_pt;
 		}
@@ -2182,7 +2182,7 @@ static void kgsl_iommu_set_pagefault(struct kgsl_mmu *mmu)
 					iommu->iommu_units[i].dev[j].ctx_id,
 					FAR);
 				kgsl_iommu_fault_handler(NULL,
-				iommu->iommu_units[i].dev[j].dev, far, 0, NULL);
+				iommu->iommu_units[i].dev[j].dev, far, 0);
 				break;
 			}
 		}
